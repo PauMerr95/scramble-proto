@@ -1,0 +1,148 @@
+.notification-wrapper{
+    z-index: 9;
+    opacity: 0.9;
+    width: 500px;
+    height: 100%;
+    margin: 0 20px 0 0;
+    padding: 4px;
+    border-radius: 5px;
+    display: grid;
+    grid-template-areas: 
+        "icon message"
+        "icon message"
+        "closer closer";
+    grid-template-columns: 40px 1fr;
+    grid-template-rows: 1fr 40px;
+
+    animation-name: slide-in;
+    animation-iteration-count: 1;
+    animation-duration: 500ms;
+    animation-fill-mode: forwards;
+}
+.notification-wrapper.Info{
+    background-color: var(--color-info-bg);
+    border: 1px solid var(--color-info-hl);
+    color:            var(--color-info-fg);
+}
+.notification-wrapper.Warn{
+    background-color: var(--color-warn-bg);
+    border: 1px solid var(--color-warn-hl);
+    color:            var(--color-warn-fg);
+}
+.notification-wrapper.Error{
+    background-color: var(--color-error-bg);
+    border: 1px solid var(--color-error-hl);
+    color:            var(--color-error-fg);
+}
+.notification-wrapper.Success{
+    background-color: var(--color-succ-bg);
+    border: 1px solid var(--color-succ-hl);
+    color:            var(--color-succ-fg);
+}
+.notification-wrapper.animation-exiting{
+    animation-name: slide-out;
+    animation-timing-function: ease-in;
+    animation-iteration-count: 1;
+    animation-duration: 1s;
+    animation-fill-mode: forwards;
+}
+.message-segment{
+    grid-area: message;
+    padding: 2px 5px 2px 5px;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: flex-start;
+    font-style: bold;
+}
+
+.notification-icon{
+    grid-area: icon;
+    width: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.notification-closer{
+    grid-area: closer;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: 'Fira Sans';
+    font-size: 10px;
+}
+
+.btn-close {
+    width: 20px;
+    height: 20px;
+    border-radius: 5px;
+}
+.btn-close:hover{
+    cursor: pointer;
+}
+.btn-close.Info{
+    background-color: var(--color-info-bg);
+    border: 1px solid var(--color-info-hl);
+    color:            var(--color-info-fg);
+}
+.btn-close.Info:hover{
+    background-color: var(--color-info-fg);
+    border: 1px solid var(--color-info-hl);
+    color:            var(--color-info-bg);
+}
+.btn-close.Warn{
+    background-color: var(--color-warn-bg);
+    border: 1px solid var(--color-warn-hl);
+    color:            var(--color-warn-fg);
+}
+.btn-close.Warn:hover{
+    background-color: var(--color-warn-fg);
+    border: 1px solid var(--color-warn-hl);
+    color:            var(--color-warn-bg);
+}
+.btn-close.Error{
+    background-color: var(--color-error-bg);
+    border: 1px solid var(--color-error-hl);
+    color:            var(--color-error-fg);
+}
+.btn-close.Error:hover{
+    background-color: var(--color-error-fg);
+    border: 1px solid var(--color-error-hl);
+    color:            var(--color-error-bg);
+}
+.btn-close.Success{
+    background-color: var(--color-succ-bg);
+    border: 1px solid var(--color-succ-hl);
+    color:            var(--color-succ-fg);
+}
+.btn-close.Success:hover{
+    background-color: var(--color-succ-fg);
+    border: 1px solid var(--color-succ-hl);
+    color:            var(--color-succ-bg);
+}
+
+span{
+    text-wrap: wrap;
+}
+
+@keyframes slide-in {
+    0% {
+        transform: translateX(1000px);
+    }
+    100% {
+        // is this even necessary
+        transform: translateX(0);
+    }
+}
+@keyframes slide-out {
+    0% {
+        // is this even necessary
+        transform: translateY(0);
+    }
+    100% {
+        transform: translateY(-200px);
+    }
+}

@@ -1,0 +1,49 @@
+<div class="viewer-shell" tabindex="0" #shell>
+    <div class="toolbar">
+    <span class="toolbar-title">Sequence Viewer</span>
+
+    @if (sqv.records().length > 1) {
+        <span class="record-nav">
+        <button class="rec-btn" (click)="prevRecord()" [disabled]="sqv.activeRecordIdx() === 0">&#8249;</button>
+        <span class="rec-label">
+            {{ sqv.activeRecordIdx() + 1 }} / {{ sqv.records().length }}
+        </span>
+        <button class="rec-btn" (click)="nextRecord()" [disabled]="sqv.activeRecordIdx() === sqv.records().length - 1">&#8250;</button>
+        </span>
+
+    }
+
+    <span class="toolbar-hint">
+        <kbd>h</kbd> <kbd>j</kbd> <kbd>k</kbd> <kbd>l</kbd> move &nbsp;-&nbsp;
+        <kbd>i</kbd> insert &nbsp;-&nbsp;
+        <kbd>r</kbd> replace &nbsp;-&nbsp;
+        <kbd>v</kbd> visual &nbsp;-&nbsp;
+        <kbd>x</kbd> delete &nbsp;·&nbsp;
+        <kbd>Esc</kbd> normal
+    </span>
+    </div>
+
+    @if (!sqv.activeRecord()) {
+    <div class="empty-hint">
+        No sequences stored yet. Import one with <kbd>:</kbd><code>e path/to/file.fasta</code>
+    </div>
+    }
+    <cdk-virtual-scroll-viewport
+    #viewport
+    [itemSize]="itemSizePx"
+    [minBufferPx]="itemSizePx * 20"
+    [maxBufferPx]="itemSizePx * 40"
+    [autofocus]="lyt.currentFocus() === 'MainPane'"
+    class="scroll-viewport">
+
+        <app-sequence-line
+            *cdkVirtualFor="let lineIdx of sqv.lineIndices(); trackBy: trackLine"
+            [line]="sqv.lineAt(lineIdx)"
+            [lineIndex]="lineIdx"
+            [cursorOffset]="cursorOnLine(lineIdx)"
+            [mode]="sqv.mode()"
+            [visualSelection]="sqv.visualSelection()">
+        </app-sequence-line>
+    </cdk-virtual-scroll-viewport>
+
+</div>

@@ -1,0 +1,28 @@
+<div class="modal-avatar-grid">
+    @for (avtr of avatars; track $index) {
+        <div class="avatar-option"
+        (click)="select(avtr)">
+            <div class="profile-picture-wrapper" [class.targeted]="lyt.currentlyTargeted() === avtr">
+                @if (avtr === "Bird") {
+                    <app-avatar-bird ></app-avatar-bird>
+                }
+                @if (avtr === "Duck") {
+                    <app-avatar-duck></app-avatar-duck>
+                }
+                @if (avtr === "Sheep") {
+                    <app-avatar-sheep></app-avatar-sheep>
+                }
+                @if (avtr === "Earth") {
+                    <app-avatar-earth></app-avatar-earth>
+                }
+                @if (avtr === "Falling") {
+                    <app-avatar-falling></app-avatar-falling>
+                }
+                @if (avtr === "Squirrel") {
+                    <app-avatar-squirrel></app-avatar-squirrel>
+                }
+            </div>
+            <span>{{ avtr }}</span>
+        </div>
+    }
+</div>

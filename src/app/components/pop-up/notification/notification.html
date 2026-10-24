@@ -1,0 +1,29 @@
+<div class="notification-wrapper" #notification
+    [class.Info]="this.notification().kind === 'Info'"
+    [class.Warn]="this.notification().kind === 'Warn'"
+    [class.Error]="this.notification().kind === 'Error'"
+    [class.Success]="this.notification().kind === 'Success'">
+
+    <div class="notification-icon">
+        @switch(this.notification().kind){
+            @case("Info") {<span>ℹ️</span>}
+            @case("Warn") {<span>⚠️</span>}
+            @case("Error") {<span>❌</span>}
+            @case("Success") {<span>🎉</span>}
+        }
+    </div>
+
+    <div class="notification-closer">
+        <span >Press &lt;leader&gt;n to dismiss</span>
+        <button class="btn-close"
+        [class.Info]="this.notification().kind === 'Info'"
+        [class.Warn]="this.notification().kind === 'Warn'"
+        [class.Error]="this.notification().kind === 'Error'"
+        [class.Success]="this.notification().kind === 'Success'"
+        (click)="dismiss()">X</button>
+    </div>
+
+    <div class="message-segment">
+        <span>{{this.notification().message}}</span>
+    </div>
+</div>

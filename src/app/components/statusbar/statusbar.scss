@@ -1,0 +1,47 @@
+.status-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 5px 12px;
+    background: var(--color-std-950, #1B2201);
+    color:      var(--color-std-200, #E7FB9D);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    user-select: none;
+    margin-right: 0.4rem;
+    border-radius: 5px;
+}
+
+.mode-badge {
+    padding: 0 10px;
+    border-radius: 3px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    font-size: 10px;
+    text-transform: uppercase;
+}
+.mode-badge[data-mode="Normal"]  { background-color: #38C0FF; color: black;}
+.mode-badge[data-mode="Insert"]  { background-color: #adff2f; color: black;}
+.mode-badge[data-mode="Replace"] { background-color: #FF9999; color: black;}
+.mode-badge[data-mode="Visual"]  { background-color: #E29BE9; color: black;}
+
+.header-label {
+    color: var(--color-std-100, #f9fee7);
+    font-size: 10px;
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.spacer { flex: 1; }
+
+.stat {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+}
+.stat-value {
+    color: var(--color-std-100, #f9fee7);
+    font-weight: 600;
+}

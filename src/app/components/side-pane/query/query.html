@@ -1,0 +1,86 @@
+<nav class="query-wrapper">
+    <button
+    class="query-button"
+    [class.active]="this.lyt.queryPage() === 'Genome'"
+    [class.targeted]="this.lyt.currentlyTargeted() === 'IconQueryGenome'"
+    (click)="this.lyt.changeQueryPage('Genome')"
+    >
+        <app-icon-query-genome
+        class="query-icon"
+        (mouseenter)="hoverGenome = true"
+        (mouseleave)="hoverGenome = false"
+        [svg_color]="this.lyt.queryPage() === 'Genome' ? '#1f2937' : '#FAF0E6'">
+        </app-icon-query-genome>
+    </button>
+
+    <button
+    class="query-button"
+    [class.active]="this.lyt.queryPage() === 'Gene'"
+    [class.targeted]="this.lyt.currentlyTargeted() === 'IconQueryGene'"
+    (click)="this.lyt.changeQueryPage('Gene')"
+    >
+        <app-icon-query-gene
+        class="query-icon"
+        (mouseenter)="hoverGene = true"
+        (mouseleave)="hoverGene = false"
+        [svg_color]="this.lyt.queryPage() === 'Gene' ? '#1f2937' : '#FAF0E6'">
+        </app-icon-query-gene>
+    </button>
+
+    <button
+    class="query-button"
+    [class.active]="this.lyt.queryPage() === 'Prokaryot'"
+    [class.targeted]="this.lyt.currentlyTargeted() === 'IconQueryProkaryot'"
+    (click)="this.lyt.changeQueryPage('Prokaryot')"
+    >
+        <app-icon-query-prokaryot
+        class="query-icon"
+        (mouseenter)="hoverProkaryot = true"
+        (mouseleave)="hoverProkaryot = false"
+        [svg_color]="this.lyt.queryPage() === 'Prokaryot' ? '#1f2937' : '#FAF0E6'">
+        </app-icon-query-prokaryot>
+    </button>
+
+    <button
+    class="query-button"
+    [class.active]="this.lyt.queryPage() === 'Virus'"
+    [class.targeted]="this.lyt.currentlyTargeted() === 'IconQueryVirus'"
+    (click)="this.lyt.changeQueryPage('Virus')"
+    >
+        <app-icon-query-virus
+        class="query-icon"
+        (mouseenter)="hoverVirus = true"
+        (mouseleave)="hoverVirus = false"
+        [svg_color]="this.lyt.queryPage() === 'Virus' ? '#1f2937' : '#FAF0E6'">
+        </app-icon-query-virus>
+    </button>
+
+    <button
+    class="query-button"
+    [class.active]="this.lyt.queryPage() === 'Organelle'"
+    [class.targeted]="this.lyt.currentlyTargeted() === 'IconQueryOrganelle'"
+    (click)="this.lyt.changeQueryPage('Organelle')"
+    >
+        <app-icon-query-organelle
+        class="query-icon"
+        (mouseenter)="hoverOrganelle = true"
+        (mouseleave)="hoverOrganelle = false"
+        [svg_color]="this.lyt.queryPage() === 'Organelle' ? '#1f2937' : '#FAF0E6'">
+        </app-icon-query-organelle>
+    </button>
+    
+</nav> 
+
+@if(this.lyt.queryPage() === "QueryMain") {
+<app-query-main-page></app-query-main-page>
+} @else if (this.lyt.queryPage() === "Genome") {
+<app-query-genome-page></app-query-genome-page>
+} @else if (this.lyt.queryPage() === "Gene") {
+<app-query-gene-page></app-query-gene-page>
+} @else if (this.lyt.queryPage() === "Prokaryot") {
+<app-query-prokaryot-page></app-query-prokaryot-page>
+} @else if (this.lyt.queryPage() === "Virus") {
+<app-query-virus-page></app-query-virus-page>
+} @else if (this.lyt.queryPage() === "Organelle") {
+<app-query-organelle-page></app-query-organelle-page>
+}

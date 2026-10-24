@@ -1,0 +1,18 @@
+<div class="query-wrapper">
+<div class="query-title-wrapper">
+    <span>NCBI Query</span>
+</div>
+    <div class="info-segment-wrapper">
+    <span class="info-segment">
+        NCBI Datasets is an online resource that lets you easily gather data from across NCBI databases.
+        Scramble uses their NCBI Datasets v2 REST API interface.
+    </span>
+    </div>
+    <button (click)="lyt.notify({kind: 'Info',    message: 'This is an information'})">Info</button>
+    <button (click)="lyt.notify({kind: 'Warn',    message: 'This is a Warning'})">Warn</button>
+    <button (click)="lyt.notify({kind: 'Error',   message: 'This is an Error'})">Error</button>
+    <button (click)="lyt.notify({kind: 'Success', message: 'This is an SuccessMessage'})">Yippieh</button>
+    <app-std-btn
+    [id]="'TestButton1'"
+    [innerText]="'TestButton'"></app-std-btn>
+</div>

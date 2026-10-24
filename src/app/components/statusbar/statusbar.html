@@ -1,0 +1,27 @@
+<div class="status-bar">
+    <span class="mode-badge" [attr.data-mode]="svc.mode()">
+    {{ modeLabel() }}
+    </span>
+
+    <span class="header-label" [title]="svc.header()">
+    {{ svc.header() | slice:0:60 }}{{ (svc.header().length > 60) ? '…' : '' }}
+    </span>
+
+    <span class="spacer"></span>
+
+    <span class="stat">
+    <span class="stat-value">
+        Location: {{ currentLocation() }}
+    </span>
+    </span>
+
+    <span class="stat">
+    <span class="stat-value">Sequence Length: {{ svc.length() }}</span>
+    </span>
+
+    @if (selectionLength() > 0) {
+    <span class="stat sel-stat">
+        <span class="stat-value">Selected Range: {{ selectionLength() }}</span>
+    </span>
+    }
+</div>

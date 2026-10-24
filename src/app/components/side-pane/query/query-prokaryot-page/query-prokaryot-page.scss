@@ -1,0 +1,16 @@
+.query-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+.query-title-wrapper {
+    width: 100%;
+    font-size: large;
+    font-weight: bold;
+    text-align: center;
+
+    background-color: var(--color-std-700, #749306);
+    border-top: 2px solid var(--color-std-400, #cef73b);
+    border-bottom: 2px solid var(--color-std-400, #cef73b);
+}

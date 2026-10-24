@@ -1,0 +1,12 @@
+@if (this.lyt.activeModal(); as modal) {
+<div class="modal-backdrop" (click)="this.lyt.closeModal()">
+    <div class="modal-wrapper" #modalWrapper (click)="$event.stopPropagation()"> 
+        <div class="modal-header">
+            <span>{{ modal.title}}</span>
+        </div>
+        <div class="modal-body">
+            <router-outlet />
+        </div>
+    </div>
+</div>
+}

@@ -1,0 +1,37 @@
+.query-wrapper {
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-evenly;
+}
+.query-button {
+    width: 35px;
+    height: 35px;
+    padding: 0.2em;
+    border: none;
+    background-color: var(--color-std-950, #1b2201);
+    border-radius: 0.6em;
+}
+.query-button:hover {
+    background: var(--color-std-600, #9bc408);
+    cursor: pointer;
+}
+.query-icon {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-content: flex-start;
+    height: 100%;
+    width: 100%;
+    object-fit: cover;
+}
+.query-button.active{
+    background-color: #FAF0E6;
+    border: 2px solid var(--color-std-600, #C2F50A);
+} 
+.query-button.targeted{
+    box-shadow: 0  5px 5px 0px var(--color-std-600, #9bc408),
+                0 -5px 5px 0px var(--color-std-600, #9bc408);
+    border: 2px solid var(--color-std-500);
+}

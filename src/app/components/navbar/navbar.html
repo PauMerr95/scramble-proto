@@ -1,0 +1,32 @@
+<nav>
+    <div class="navbar-icon-wrapper">
+        <ul>
+        <li>
+            <app-icon-profile
+                id="Profile"
+                class="navbar-icon"
+                [svg_color]="handleSvgColor('Profile')"
+                [class.active]="activeIcon === 'Profile'"
+                (click)="toggleSidePane.emit('Profile')">
+            </app-icon-profile>
+        </li>
+        <li>
+            <app-icon-folder
+                id="Files"
+                class="navbar-icon"
+                [svg_color]="handleSvgColor('Files')"
+                [class.active]="activeIcon === 'Files'"
+                (click)="toggleSidePane.emit('Files')">
+            </app-icon-folder>
+        <li>
+            <app-icon-db-search 
+                id="Query"
+                class="navbar-icon"
+                [svg_color]="handleSvgColor('Query')"
+                [class.active]="activeIcon === 'Query'"
+                (click)="toggleSidePane.emit('Query')">
+            </app-icon-db-search>
+        </li>
+        </ul>
+    </div>
+</nav>

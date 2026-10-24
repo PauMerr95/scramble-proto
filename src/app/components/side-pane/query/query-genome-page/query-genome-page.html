@@ -1,0 +1,35 @@
+<div class="query-wrapper">
+  <div class="query-title-wrapper">
+      <span>Genome Query</span>
+  </div>
+  <div class="query-subtitle-wrapper">
+      <span>Query By</span>
+  </div>
+  <app-drop-down
+  [id]="'QueryDDGenomeOption1'"
+  [optionList]="this.queryOptions"
+  (changedOption)="handleChangeDDOption1($event)"></app-drop-down>
+
+  @if (firstSelection() !== null) {
+      <span class="query-help-example">Example: {{ helpFirstSelection() }}</span>
+
+      <app-input-text #input
+      [id]="'QueryInputGenome'"
+      [displaySize]=4
+      [recommendations]="[
+          'Test1', 'Test2', 'Test5', 'Testint', 'Tester', 'Testina']"></app-input-text>
+
+      <app-drop-down
+      [id]="'QueryDDGenomeOption2'"
+      [optionList]="this.secondOptions()!"
+      (changedOption)="handleChangeDDOption2($event)"></app-drop-down>
+
+  }
+  @if (secondSelection() !== null) {
+      <span class="query-help-example">{{ helpSecondSelection() }}</span>
+      <app-std-btn
+      [id]="'RetrieveGenomeBtn'"
+      [innerText]="'Retrieve Data'"
+      (onTrigger)="this.generateAndLogURL()"></app-std-btn>
+  }
+</div>

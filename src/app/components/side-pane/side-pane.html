@@ -1,0 +1,18 @@
+<div class="sidePane-wrapper" #sidePane tabindex="-1">
+    <app-icon-hideSP class="icon"
+    (click)="hideSidePane.emit()"
+    (mouseenter)="hover = true"
+    (mouseleave)="hover = false"
+    [svg_color]="hover ? '#000000' : '#FAF0E6' ">
+    </app-icon-hideSP>
+
+    @if(this.lyt.sidePaneState() === "Profile") {
+        <app-profile></app-profile>
+    }
+    @if(this.lyt.sidePaneState() === "Files") {
+        <p>Showing Files!</p>
+    }
+    @if(this.lyt.sidePaneState() === "Query") {
+        <app-query></app-query>
+    }
+</div>
