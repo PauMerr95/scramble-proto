@@ -112,31 +112,71 @@ export class CmdLineService {
       this.cmdOutputType.set("Success");
       this.lyt.focusOn("MainPane");
     },
-    // Import a FASTA file from disk into the sequence store.
+    // Open a FASTA/FNA file as a working copy; :w writes it back.
     e: async (path) => {
       this.lyt.focusOn("MainPane");
       if (!path) {
         this.report("Failure", "Usage: :e <path to fasta file>");
         return;
       }
-      this.report("Neutral", `Importing ${path} ...`);
+      this.report("Neutral", `Opening ${path} ...`);
+      const known = new Set(this.data.records().map(rec => rec.id));
       try {
-        const imported = await this.data.importFasta(path.replace(/^["']|["']$/g, ''));
-        const bases = imported.reduce((sum, rec) => sum + rec.length, 0);
-        this.report("Success", `Imported ${imported.length} record(s), ${bases} bases`);
+        const opened = await this.data.openFasta(unquote(path));
+        if (opened.every(rec => known.has(rec.id))) {
+          this.sqv.selectRecord(this.data.records().findIndex(rec => rec.id === opened[0]?.id));
+          this.report("Success", `${path} is already open`);
+          return;
+        }
+        const bases = opened.reduce((sum, rec) => sum + rec.length, 0);
+        this.report("Success", `Opened ${opened.length} record(s), ${bases} bases`);
       } catch (err) {
-        this.report("Failure", `Import failed: ${err}`);
+        this.report("Failure", `Open failed: ${err}`);
       }
     },
-    // Write pending edits of the active record now instead of waiting for the background flush.
-    w: async () => {
-      this.lyt.focusOn("MainPane");
-      try {
-        const written = await this.sqv.save();
-        this.report("Success", written ? "Written to disk" : "Nothing to write");
-      } catch (err) {
-        this.report("Failure", `Write failed: ${err}`);
-      }
-    }
+    // Write the active file back to its source, or save it as <path>. :w! overwrites anyway.
+    w:    async (path) => { await this.write(path, false); },
+    "w!": async (path) => { await this.write(path, true); },
+    // Close the active file. :q! discards unsaved changes.
+    q:    () => this.close(false),
+    "q!": () => this.close(true),
+    wq: async (path) => {
+      if (await this.write(path, false)) await this.close(false);
+    },
   };
+
+  /** Returns whether the file was written. */
+  private async write(path: string, force: boolean): Promise<boolean> {
+    this.lyt.focusOn("MainPane");
+    if (!this.sqv.activeRecord()) {
+      this.report("Failure", "No open file to write");
+      return false;
+    }
+    try {
+      const saved = await this.sqv.save(path ? unquote(path) : null, force);
+      this.report("Success", `Written to ${saved}`);
+      return true;
+    } catch (err) {
+      this.report("Failure", `Write failed: ${err}`);
+      return false;
+    }
+  }
+
+  private async close(force: boolean): Promise<void> {
+    this.lyt.focusOn("MainPane");
+    if (!this.sqv.activeRecord()) {
+      this.report("Failure", "No open file to close");
+      return;
+    }
+    try {
+      const closed = await this.sqv.close(force);
+      this.report("Success", `Closed ${closed}`);
+    } catch (err) {
+      this.report("Failure", `Close failed: ${err}`);
+    }
+  }
+}
+
+function unquote(path: string): string {
+  return path.replace(/^["']|["']$/g, '');
 }

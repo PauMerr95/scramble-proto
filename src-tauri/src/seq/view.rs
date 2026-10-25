@@ -2,7 +2,7 @@ use memchr::memmem;
 use serde::{Deserialize, Serialize};
 
 use std::fs::{self, File};
-use std::io;
+use std::io::{self, Write};
 use std::path::Path;
 use std::time::Instant;
 
@@ -43,22 +43,26 @@ pub struct RecordView {
     /// Ops applied since the base file was last written; replayed if they race a flush.
     log: Vec<EditOp>,
     pub last_edit: Option<Instant>,
+    /// Counts every applied op, so a save can tell whether edits arrived while it was writing.
+    revision: u64,
 }
 
-/// Everything a flush needs to write the record without holding the view lock.
+/// Everything a flush or export needs to write the record without holding the view lock.
 pub struct Snapshot {
     base: BaseFile,
-    header: String,
+    pub header: String,
+    pub comments: Vec<String>,
     pieces: Vec<Piece>,
     added: Vec<u8>,
     log_len: usize,
+    pub revision: u64,
 }
 
 impl RecordView {
     pub fn open(dir: &Path, meta: RecordMeta) -> RecordView {
         let base = BaseFile::new(fasta::record_path(dir, &meta.id), &meta.header, meta.length);
         let pieces = whole_base(base.length);
-        RecordView { meta, base, pieces, added: Vec::new(), log: Vec::new(), last_edit: None }
+        RecordView { meta, base, pieces, added: Vec::new(), log: Vec::new(), last_edit: None, revision: 0 }
     }
 
     pub fn len(&self) -> u64 {
@@ -95,7 +99,23 @@ impl RecordView {
         }
         self.log.push(op);
         self.last_edit = Some(Instant::now());
+        self.revision += 1;
+        self.meta.modified = true;
         Ok(())
+    }
+
+    /// Called after the record was written to `source`. Stays modified if edits arrived after the
+    /// snapshot that was written.
+    pub fn mark_saved(&mut self, dir: &Path, revision: u64, source: &str) -> io::Result<()> {
+        self.meta.modified = self.revision != revision;
+        self.meta.source = Some(source.to_string());
+        fasta::save_meta(dir, &self.meta)
+    }
+
+    /// Drops unwritten edits so a closed record is never flushed again.
+    pub fn discard(&mut self) {
+        self.log.clear();
+        self.last_edit = None;
     }
 
     /// Bases `[start, start + len)`, clamped to the record end.
@@ -138,9 +158,11 @@ impl RecordView {
         Snapshot {
             base: self.base.clone(),
             header: self.meta.header.clone(),
+            comments: self.meta.comments.clone(),
             pieces: self.pieces.clone(),
             added: self.added.clone(),
             log_len: self.log.len(),
+            revision: self.revision,
         }
     }
 
@@ -225,8 +247,14 @@ impl RecordView {
 impl Snapshot {
     /// Streams the snapshot into a new canonical file at `path`; returns its length.
     pub fn write_to(&self, path: &Path) -> io::Result<u64> {
-        let total: u64 = self.pieces.iter().map(|p| p.len).sum();
         let mut writer = CanonicalWriter::create(path, &self.header)?;
+        self.stream_into(&mut writer)?;
+        writer.finish()
+    }
+
+    /// Pushes all bases of the snapshot into `writer`, one chunk at a time.
+    pub fn stream_into<W: Write>(&self, writer: &mut CanonicalWriter<W>) -> io::Result<()> {
+        let total: u64 = self.pieces.iter().map(|p| p.len).sum();
         let mut buf = Vec::new();
         let mut pos = 0;
         while pos < total {
@@ -236,7 +264,7 @@ impl Snapshot {
             writer.push(&buf)?;
             pos = end;
         }
-        writer.finish()
+        Ok(())
     }
 }
 
@@ -284,7 +312,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let src = dir.path().join("in.fasta");
         fs::write(&src, format!(">test\n{seq}\n")).unwrap();
-        let meta = fasta::import(&src, dir.path()).unwrap().remove(0);
+        let meta = fasta::import(&src, dir.path(), "f1").unwrap().remove(0);
         let view = RecordView::open(dir.path(), meta);
         (dir, view)
     }
@@ -348,6 +376,23 @@ mod tests {
         assert!(view.apply(EditOp::Delete { offset: 2, len: 3 }).is_err());
         assert_eq!(full(&view), "ACGT");
         assert_eq!(view.pending_ops(), 0);
+        assert!(!view.meta.modified);
+    }
+
+    #[test]
+    fn mark_saved_keeps_edits_that_raced_the_save() {
+        let (dir, mut view) = setup("ACGT");
+        view.apply(ins(0, "N")).unwrap();
+        assert!(view.meta.modified);
+        let snap = view.snapshot();
+        view.mark_saved(dir.path(), snap.revision, "out.fa").unwrap();
+        assert!(!view.meta.modified);
+
+        let snap = view.snapshot();
+        view.apply(ins(0, "N")).unwrap();
+        view.mark_saved(dir.path(), snap.revision, "out.fa").unwrap();
+        assert!(view.meta.modified, "edit after the snapshot is not on disk yet");
+        assert_eq!(fasta::load_meta(dir.path(), &view.meta.id).unwrap().source.as_deref(), Some("out.fa"));
     }
 
     #[test]

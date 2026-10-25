@@ -1,5 +1,5 @@
 use std::io;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use super::fasta::RecordMeta;
@@ -21,9 +21,28 @@ where
         .map_err(|e| e.to_string())
 }
 
+/// Opens a FASTA/FNA file for editing (or returns its records if it is already open).
 #[tauri::command]
-pub async fn import_fasta(store: Store<'_>, path: String) -> Result<Vec<RecordMeta>, String> {
-    blocking(&store, move |s| s.import(&PathBuf::from(path))).await
+pub async fn open_fasta(store: Store<'_>, path: String) -> Result<Vec<RecordMeta>, String> {
+    blocking(&store, move |s| s.open_file(&PathBuf::from(path))).await
+}
+
+/// Writes an opened file back to its source, or to `path` (save as). `force` overwrites a
+/// source changed on disk or an existing `path`.
+#[tauri::command]
+pub async fn save_file(
+    store: Store<'_>,
+    file_id: String,
+    path: Option<String>,
+    force: bool,
+) -> Result<Vec<RecordMeta>, String> {
+    blocking(&store, move |s| s.save_file(&file_id, path.as_deref().map(Path::new), force)).await
+}
+
+/// Closes an opened file and deletes its working copies. `force` discards unsaved changes.
+#[tauri::command]
+pub async fn close_file(store: Store<'_>, file_id: String, force: bool) -> Result<(), String> {
+    blocking(&store, move |s| s.close_file(&file_id, force)).await
 }
 
 #[tauri::command]
@@ -50,9 +69,4 @@ pub async fn search_sequence(
     limit: usize,
 ) -> Result<Vec<u64>, String> {
     blocking(&store, move |s| s.view(&id)?.view.read().unwrap().search(&query, from, limit)).await
-}
-
-#[tauri::command]
-pub async fn flush_record(store: Store<'_>, id: String) -> Result<bool, String> {
-    blocking(&store, move |s| s.flush_id(&id)).await
 }

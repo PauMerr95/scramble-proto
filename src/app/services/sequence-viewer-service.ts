@@ -61,8 +61,9 @@ export class SequenceViewerService {
       untracked(() => {
         if (currLength > prevLength) {
           this.selectRecord(currLength - 1);
-        } else if (currLength < prevLength && this.activeRecordIdx() > currLength - 1) {
-          this.selectRecord(currLength - 1);
+        } else if (currLength < prevLength) {
+          // A closed file can shift another record under the active index: reload either way.
+          this.selectRecord(Math.min(this.activeRecordIdx(), currLength - 1));
         }
       });
       prevLength = currLength;
@@ -252,12 +253,25 @@ export class SequenceViewerService {
     this.setMode("Normal");
   }
 
-  /** Persists edits explicitly instead of waiting for the background flush. */
-  async save(): Promise<boolean> {
+  /**
+   * Writes the active record's file (all its records) to its source, or to `path` (save as),
+   * once every queued edit reached the backend. Returns the saved path, or null without a record.
+   */
+  async save(path: string | null = null, force = false): Promise<string | null> {
     const rec = this.activeRecord();
-    if (!rec) return false;
+    if (!rec) return null;
     await this.editQueue;
-    return this.store.flush(rec.id);
+    const saved = await this.data.saveFile(rec.fileId, path, force);
+    return saved[0]?.source ?? null;
+  }
+
+  /** Closes the active record's file. Returns its path, or null without a record. */
+  async close(force = false): Promise<string | null> {
+    const rec = this.activeRecord();
+    if (!rec) return null;
+    await this.editQueue;
+    await this.data.closeFile(rec.fileId, force);
+    return rec.source;
   }
 
   /**
@@ -267,7 +281,7 @@ export class SequenceViewerService {
   private edit(op: EditOp, lengthDelta: number): void {
     const rec = this.activeRecord();
     if (!rec) return;
-    if (lengthDelta) this.data.patchRecord(rec.id, { length: rec.length + lengthDelta });
+    this.data.patchRecord(rec.id, { length: rec.length + lengthDelta, modified: true });
     this.pendingEdits++;
 
     this.editQueue = this.editQueue

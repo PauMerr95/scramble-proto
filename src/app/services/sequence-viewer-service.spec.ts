@@ -112,11 +112,24 @@ describe('SequenceViewerService', () => {
     expect(seq.cursorOffset()).toBe(9);
   });
 
-  it('flushes pending edits on save', async () => {
+  it('marks edits as unsaved and saves the whole file after queued edits', async () => {
     await open('ACGT');
     seq.deleteAt(0);
-    expect(await seq.save()).toBe(true);
-    expect(store.flush).toHaveBeenCalledWith('r0');
-    expect(store.applyEdits).toHaveBeenCalledBefore(store.flush);
+    expect(seq.activeRecord()?.modified).toBe(true);
+    expect(await seq.save()).toBe('/data/fr0.fa');
+    expect(store.saveFile).toHaveBeenCalledWith('fr0', null, false);
+    expect(store.applyEdits).toHaveBeenCalledBefore(store.saveFile);
+    expect(seq.activeRecord()?.modified).toBe(false);
+  });
+
+  it('closes the active file and reloads the record that takes its place', async () => {
+    await open('AAAA', 'CCCC', 'GGGG');
+    seq.selectRecord(1);
+    await seq.close();
+    TestBed.tick();
+    expect(store.closeFile).toHaveBeenCalledWith('fr1', false);
+    expect(seq.records().map(r => r.id)).toEqual(['r0', 'r2']);
+    expect(seq.activeRecord()?.id).toBe('r2');
+    await vi.waitFor(() => expect(store.getWindow).toHaveBeenLastCalledWith('r2', 0, expect.any(Number)));
   });
 });

@@ -8,19 +8,25 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::validate_bases;
 
-/// Bases per line in canonical record files. Because every line but the last has exactly this
-/// many bases followed by '\n', a base offset maps to a byte offset arithmetically (like .fai).
-pub const LINE_BASES: u64 = 80;
+/// Bases per line in canonical record files and FASTA exports. Because every line but the last
+/// has exactly this many bases followed by '\n', a base offset maps to a byte offset
+/// arithmetically (like .fai). 60 is the NCBI layout and holds exactly 20 codons per line.
+pub const LINE_BASES: u64 = 60;
 const LINE_BYTES: u64 = LINE_BASES + 1;
 
+// Mirrors `RecordMeta` in src/app/types/main_types.ts.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RecordMeta {
     pub id: String,
+    /// The opened file (see `workspace::OpenFile`) this record belongs to.
+    pub file_id: String,
     pub header: String,
     pub comments: Vec<String>,
     pub length: u64,
     pub source: Option<String>,
+    /// Edited since the file was opened or last saved back to its source.
+    pub modified: bool,
 }
 
 /// Location of a canonical record file and how to address bases in it.
@@ -56,17 +62,26 @@ impl BaseFile {
     }
 }
 
-/// Streams bases into a canonical record file, wrapping lines at `LINE_BASES`.
-pub struct CanonicalWriter {
-    out: BufWriter<File>,
+/// Streams one record as FASTA, wrapping lines at `LINE_BASES`. Store files never get comments
+/// (they live in `<id>.json`), exports do.
+pub struct CanonicalWriter<W: Write = BufWriter<File>> {
+    out: W,
     col: u64,
     pub length: u64,
 }
 
 impl CanonicalWriter {
     pub fn create(path: &Path, header: &str) -> io::Result<CanonicalWriter> {
-        let mut out = BufWriter::new(File::create(path)?);
+        CanonicalWriter::start(BufWriter::new(File::create(path)?), header, &[])
+    }
+}
+
+impl<W: Write> CanonicalWriter<W> {
+    pub fn start(mut out: W, header: &str, comments: &[String]) -> io::Result<CanonicalWriter<W>> {
         writeln!(out, ">{header}")?;
+        for comment in comments {
+            writeln!(out, ";{comment}")?;
+        }
         Ok(CanonicalWriter { out, col: 0, length: 0 })
     }
 
@@ -104,6 +119,17 @@ pub fn tmp_path(dir: &Path, id: &str) -> PathBuf {
     dir.join(format!("{id}.fa.tmp"))
 }
 
+/// Removes a record's files from the store. Missing files are fine (already gone).
+pub fn remove_record(dir: &Path, id: &str) -> io::Result<()> {
+    for path in [meta_path(dir, id), record_path(dir, id), tmp_path(dir, id)] {
+        match fs::remove_file(path) {
+            Err(e) if e.kind() != io::ErrorKind::NotFound => return Err(e),
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
 pub fn save_meta(dir: &Path, meta: &RecordMeta) -> io::Result<()> {
     let raw = serde_json::to_vec_pretty(meta).map_err(io::Error::other)?;
     let tmp = dir.join(format!("{}.json.tmp", meta.id));
@@ -133,15 +159,17 @@ struct PendingRecord {
 }
 
 impl PendingRecord {
-    fn start(dir: &Path, header: String, source: &Path) -> io::Result<PendingRecord> {
+    fn start(dir: &Path, header: String, source: &Path, file_id: &str) -> io::Result<PendingRecord> {
         let id = new_record_id();
         let writer = CanonicalWriter::create(&tmp_path(dir, &id), &header)?;
         let meta = RecordMeta {
             id,
+            file_id: file_id.to_string(),
             header,
             comments: Vec::new(),
             length: 0,
             source: Some(source.to_string_lossy().into_owned()),
+            modified: false,
         };
         Ok(PendingRecord { meta, writer })
     }
@@ -156,18 +184,17 @@ impl PendingRecord {
 
 /// Streams a (multi-)FASTA file into the store, one canonical file per record. Never holds more
 /// than one input line in memory. All-or-nothing: on error every record written so far is removed.
-pub fn import(source: &Path, dir: &Path) -> io::Result<Vec<RecordMeta>> {
+pub fn import(source: &Path, dir: &Path, file_id: &str) -> io::Result<Vec<RecordMeta>> {
     let mut done: Vec<RecordMeta> = Vec::new();
     let mut current: Option<PendingRecord> = None;
 
-    let result = import_into(source, dir, &mut done, &mut current);
+    let result = import_into(source, dir, file_id, &mut done, &mut current);
     if result.is_err() {
         if let Some(pending) = current {
             let _ = fs::remove_file(tmp_path(dir, &pending.meta.id));
         }
         for meta in &done {
-            let _ = fs::remove_file(record_path(dir, &meta.id));
-            let _ = fs::remove_file(meta_path(dir, &meta.id));
+            let _ = remove_record(dir, &meta.id);
         }
     }
     result.map(|_| done)
@@ -176,6 +203,7 @@ pub fn import(source: &Path, dir: &Path) -> io::Result<Vec<RecordMeta>> {
 fn import_into(
     source: &Path,
     dir: &Path,
+    file_id: &str,
     done: &mut Vec<RecordMeta>,
     current: &mut Option<PendingRecord>,
 ) -> io::Result<()> {
@@ -196,7 +224,7 @@ fn import_into(
                 done.push(pending.finish(dir)?);
             }
             let header = String::from_utf8_lossy(header).trim().to_string();
-            *current = Some(PendingRecord::start(dir, header, source)?);
+            *current = Some(PendingRecord::start(dir, header, source, file_id)?);
         } else if let Some(comment) = text.strip_prefix(b";") {
             if let Some(pending) = current.as_mut() {
                 pending.meta.comments.push(String::from_utf8_lossy(comment).trim().to_string());
@@ -205,7 +233,7 @@ fn import_into(
             if current.is_none() {
                 // Headerless input: name the record after the file.
                 let stem = source.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
-                *current = Some(PendingRecord::start(dir, stem, source)?);
+                *current = Some(PendingRecord::start(dir, stem, source, file_id)?);
             }
             let bases: Vec<u8> = text.iter().copied().filter(|b| !b.is_ascii_whitespace()).collect();
             validate_bases(&bases)
@@ -230,16 +258,17 @@ mod tests {
         let seq: String = "ACGTN".repeat(40); // 200 bases, ragged input lines below
         fs::write(&src, format!(">rec one\n;a comment\n{}\n{}\n>rec two\nacgt\n", &seq[..130], &seq[130..])).unwrap();
 
-        let metas = import(&src, dir.path()).unwrap();
+        let metas = import(&src, dir.path(), "f1").unwrap();
         assert_eq!(metas.len(), 2);
         assert_eq!(metas[0].header, "rec one");
         assert_eq!(metas[0].comments, vec!["a comment"]);
         assert_eq!(metas[0].length, 200);
         assert_eq!(metas[1].length, 4);
+        assert!(metas.iter().all(|m| m.file_id == "f1" && !m.modified));
 
         let raw = fs::read_to_string(record_path(dir.path(), &metas[0].id)).unwrap();
         let lines: Vec<&str> = raw.lines().collect();
-        assert_eq!(lines, vec![">rec one", &seq[..80], &seq[80..160], &seq[160..]]);
+        assert_eq!(lines, vec![">rec one", &seq[..60], &seq[60..120], &seq[120..180], &seq[180..]]);
         assert_eq!(load_meta(dir.path(), &metas[1].id).unwrap(), metas[1]);
     }
 
@@ -249,11 +278,11 @@ mod tests {
         let src = dir.path().join("in.fasta");
         let seq: String = (0..1000).map(|i| b"ACGT"[i % 4] as char).collect();
         fs::write(&src, format!(">h\n{seq}\n")).unwrap();
-        let meta = import(&src, dir.path()).unwrap().remove(0);
+        let meta = import(&src, dir.path(), "f1").unwrap().remove(0);
         let base = BaseFile::new(record_path(dir.path(), &meta.id), &meta.header, meta.length);
         let mut file = File::open(&base.path).unwrap();
 
-        for (start, end) in [(0, 1), (0, 80), (79, 81), (155, 401), (999, 1000), (0, 1000)] {
+        for (start, end) in [(0, 1), (0, 60), (59, 61), (155, 401), (999, 1000), (0, 1000)] {
             let mut out = Vec::new();
             base.read_range(&mut file, start, end, &mut out).unwrap();
             assert_eq!(out, seq.as_bytes()[start as usize..end as usize], "range {start}..{end}");
@@ -266,10 +295,38 @@ mod tests {
         let src = dir.path().join("in.fasta");
         fs::write(&src, ">ok\nACGT\n>bad\nACGTXZ\n").unwrap();
 
-        let err = import(&src, dir.path()).unwrap_err();
+        let err = import(&src, dir.path(), "f1").unwrap_err();
         assert_eq!(err.kind(), io::ErrorKind::InvalidData);
         let leftovers: Vec<_> = fs::read_dir(dir.path()).unwrap().filter_map(|e| e.ok())
             .filter(|e| e.file_name() != "in.fasta").collect();
         assert!(leftovers.is_empty(), "left files behind: {leftovers:?}");
+    }
+
+    #[test]
+    fn record_meta_json_matches_frontend() {
+        // Shape of `RecordMeta` in src/app/types/main_types.ts
+        let meta = RecordMeta {
+            id: "a1".into(),
+            file_id: "f1".into(),
+            header: "h".into(),
+            comments: vec![],
+            length: 4,
+            source: None,
+            modified: true,
+        };
+        let json = serde_json::to_value(&meta).unwrap();
+        let mut keys: Vec<&str> = json.as_object().unwrap().keys().map(|k| k.as_str()).collect();
+        keys.sort();
+        assert_eq!(keys, ["comments", "fileId", "header", "id", "length", "modified", "source"]);
+        assert!(json["source"].is_null());
+    }
+
+    #[test]
+    fn writer_adds_comments_for_exports() {
+        let mut out = Vec::new();
+        let mut writer = CanonicalWriter::start(&mut out, "h", &["one".into()]).unwrap();
+        writer.push(&[b'A'; 61]).unwrap();
+        assert_eq!(writer.finish().unwrap(), 61);
+        assert_eq!(String::from_utf8(out).unwrap(), format!(">h\n;one\n{}\nA\n", "A".repeat(60)));
     }
 }

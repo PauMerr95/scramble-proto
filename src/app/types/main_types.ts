@@ -26,10 +26,12 @@ export interface VisualSelection {
 // Mirrors `RecordMeta` in src-tauri/src/seq/fasta.rs. The sequence itself stays on disk.
 export interface RecordMeta {
     id: string;
+    fileId: string;         // the opened file the record belongs to; :w and :q act on all of them
     header: string;
     comments: string[];
     length: number;
-    source: string | null;
+    source: string | null;  // path the file is saved back to
+    modified: boolean;      // edited since opened or last saved
 }
 
 // Mirrors `EditOp` in src-tauri/src/seq/view.rs. Offsets are 0-based base positions.

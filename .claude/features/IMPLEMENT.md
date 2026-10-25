@@ -18,6 +18,6 @@
 
 ## Backend
 
-1. [ ] Temporary file saving and loading mechanic for fasta/fna files.
+1. [x] Temporary file saving and loading mechanic for fasta/fna files.
 2. [ ] Apache Arrow / DataFusion integration.
 3. [ ] Codon integration.

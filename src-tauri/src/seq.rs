@@ -1,6 +1,6 @@
 //! On-disk sequence storage.
 //!
-//! Records live in the store directory as canonical FASTA files (`<id>.fa`, one record each,
+//! Records live in the working directory as canonical FASTA files (`<id>.fa`, one record each,
 //! fixed line width) plus a JSON sidecar (`<id>.json`) holding the metadata. The backend keeps a
 //! `RecordView` per opened record: a piece table over the immutable file that collects edits in
 //! memory. A background thread writes the collected edits back to disk in batches.
@@ -11,6 +11,7 @@ pub mod commands;
 pub mod fasta;
 pub mod store;
 pub mod view;
+pub mod workspace;
 
 use std::io;
 

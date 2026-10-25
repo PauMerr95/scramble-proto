@@ -30,7 +30,7 @@ The frontend keeps building the *query* (`QueryPacket { how, what, specifier }` 
 1. **Download**: stream `bytes_stream()` to a temp file under the app data dir, emit progress (bytes / Content-Length if present), and support cancel through a `CancellationToken`. Resume with `Range` requests where the server supports it.
 2. **Unpack**: `zip` crate, reading entries by name from `dataset_catalog.json`. Stream-copy each entry. Never `read_to_end` an `.fna`.
 3. **Ingest**: stream each extracted `.fna` through `seq::fasta::import` (or `SeqStore::import`). It already streams, splits multi-FASTA into one canonical file per record, validates IUPAC, and rolls back on error. Import works from a path, so extract to a temp file first or add a reader-based variant. Load reports (`.jsonl`) and annotations into DataFusion/Parquet tables keyed by accession.
-4. **Expose**: return `RecordMeta` only and append it through `DataSessionService` (as `importFasta` does). The viewer pulls windows on demand (see the `scramble-backend` and `scramble-frontend` skills).
+4. **Expose**: return `RecordMeta` only and append it through `DataSessionService` (as `openFasta` does). The viewer pulls windows on demand (see the `scramble-backend` and `scramble-frontend` skills).
 
 Run the whole job off the main thread as a tracked task (job id → status in managed state) so the UI can show progress, survive navigation, and cancel.
 

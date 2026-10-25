@@ -9,11 +9,12 @@ pub mod user;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run(user: data::UserInfo) {
-  let store_dir = data::default_data_dir(data::retrieve_os()).unwrap().join("store");
-  let seq_store = Arc::new(SeqStore::new(store_dir).expect("could not create sequence store directory"));
+  // Working copies of opened files; they stay until the file is closed (see seq::workspace).
+  let work_dir = data::default_data_dir(data::retrieve_os()).unwrap().join("tmp");
+  let seq_store = Arc::new(SeqStore::new(work_dir).expect("could not create sequence working directory"));
   store::spawn_flusher(seq_store.clone(), FlushPolicy::default());
 
-  let app = tauri::Builder::default()
+  let builder = tauri::Builder::default()
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
@@ -23,19 +24,8 @@ pub fn run(user: data::UserInfo) {
         )?;
       }
       Ok(())
-    })
-    .manage(data::UserState { data: Mutex::new(user)})
-    .manage(seq_store.clone())
-    .invoke_handler(tauri::generate_handler![
-        get_user_info,
-        get_config_path,
-        save_user_info,
-        seq::commands::import_fasta,
-        seq::commands::list_records,
-        seq::commands::get_window,
-        seq::commands::apply_edits,
-        seq::commands::search_sequence,
-        seq::commands::flush_record])
+    });
+  let app = with_commands(builder, user, seq_store.clone())
     .build(tauri::generate_context!())
     .expect("error while building tauri application");
 
@@ -45,6 +35,25 @@ pub fn run(user: data::UserInfo) {
       seq_store.flush_all();
     }
   });
+}
+
+/// Managed state and every `invoke` command. Generic over the runtime so the IPC tests can run
+/// the same handlers on tauri's mock runtime.
+pub fn with_commands<R: tauri::Runtime>(builder: tauri::Builder<R>, user: data::UserInfo, seq_store: Arc<SeqStore>) -> tauri::Builder<R> {
+  builder
+    .manage(data::UserState { data: Mutex::new(user)})
+    .manage(seq_store)
+    .invoke_handler(tauri::generate_handler![
+        get_user_info,
+        get_config_path,
+        save_user_info,
+        seq::commands::open_fasta,
+        seq::commands::save_file,
+        seq::commands::close_file,
+        seq::commands::list_records,
+        seq::commands::get_window,
+        seq::commands::apply_edits,
+        seq::commands::search_sequence])
 }
 
 #[tauri::command]
@@ -67,3 +76,4 @@ fn save_user_info(user_state: tauri::State<data::UserState>, mut user_data: data
   user::data::save_to_file(&user_data, &config_path)?;
   Ok(user_data)
 }
+

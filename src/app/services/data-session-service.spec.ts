@@ -34,13 +34,38 @@ describe('DataSessionService', () => {
     expect(service.records()).toEqual([]);
   });
 
-  it('appends imported records', async () => {
+  it('appends opened records once, even when a file is opened twice', async () => {
     store.add('a1', 'ACGT');
     await service.init();
-    const imported = await service.importFasta('C:/data/new.fasta');
-    expect(store.importFasta).toHaveBeenCalledWith('C:/data/new.fasta');
+    const opened = await service.openFasta('C:/data/new.fasta');
+    expect(store.openFasta).toHaveBeenCalledWith('C:/data/new.fasta');
     expect(service.records().length).toBe(2);
-    expect(service.records()[1]).toEqual(imported[0]);
+    expect(service.records()[1]).toEqual(opened[0]);
+
+    await service.openFasta('C:/data/new.fasta');
+    expect(service.records().length).toBe(2);
+  });
+
+  it('takes the saved state from the backend', async () => {
+    store.add('a1', 'ACGT', 'h', 'f1');
+    await service.init();
+    service.patchRecord('a1', { modified: true });
+    await service.saveFile('f1', '/data/copy.fa', false);
+    expect(store.saveFile).toHaveBeenCalledWith('f1', '/data/copy.fa', false);
+    expect(service.records()[0]).toMatchObject({ modified: false, source: '/data/copy.fa' });
+  });
+
+  it('drops every record of a closed file, and keeps them if the backend refuses', async () => {
+    store.add('a1', 'ACGT', 'h', 'f1');
+    store.add('a2', 'GG', 'h', 'f1');
+    store.add('b1', 'CC', 'h', 'f2');
+    await service.init();
+    await store.applyEdits('b1', [{ kind: 'insert', offset: 0, bases: 'A' }]);
+
+    await service.closeFile('f1', false);
+    expect(service.records().map(r => r.id)).toEqual(['b1']);
+    await expect(service.closeFile('f2', false)).rejects.toContain('unsaved changes');
+    expect(service.records().map(r => r.id)).toEqual(['b1']);
   });
 
   it('patches a single record', async () => {

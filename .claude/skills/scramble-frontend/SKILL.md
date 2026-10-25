@@ -32,7 +32,7 @@ Much of the UI will change. These parts stay:
 
 - `App` sends every `keydown` to `MotionService.handleKeyDown`, which switches on `LayoutService.currentFocus()`.
 - Main pane is a modal editor. `Normal`: h/j/k/l, w/b, 0/^/$, g/G, i/a/r/v/x, n/N for search hits. Plus `Insert`, `Replace`, and `Visual`. `Esc` returns to Normal. Insert/replace accept `IUPAC_CODES` only (it mirrors the backend set).
-- `/` search (backend, ≤ `SEARCH_LIMIT` hits, jumps to the first hit at/after the cursor), `:` ex-commands (`executeCmds: Record<string, ExCommand>`, args after the first word, e.g. `:e path`, `:w`), and space leader (5 s timeout, `leaderCmds`).
+- `/` search (backend, ≤ `SEARCH_LIMIT` hits, jumps to the first hit at/after the cursor), `:` ex-commands (`executeCmds: Record<string, ExCommand>`, args after the first word, e.g. `:e path`, `:w [path]`, `:w!`, `:q`, `:q!`, `:wq`; names include the `!`), and space leader (5 s timeout, `leaderCmds`).
 - Side pane and modals navigate with 2D move grids (`move-grids/*.ts`) of `SelectableLocation` ids. A new focusable widget needs an id in those unions and a slot in the grid.
 
 ## Testing

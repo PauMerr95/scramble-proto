@@ -1,6 +1,9 @@
 <div class="viewer-shell" tabindex="0" #shell>
     <div class="toolbar">
     <span class="toolbar-title">Sequence Viewer</span>
+    @if (sqv.activeRecord()?.modified) {
+        <span class="rec-label" title="Unsaved changes, :w to write">[+]</span>
+    }
 
     @if (sqv.records().length > 1) {
         <span class="record-nav">

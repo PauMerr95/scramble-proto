@@ -8,8 +8,19 @@ import { EditOp, RecordMeta } from '../types/main_types';
   providedIn: 'root',
 })
 export class SequenceStoreService {
-  importFasta(path: string): Promise<RecordMeta[]> {
-    return invoke<RecordMeta[]>('import_fasta', { path });
+  /** Opens a FASTA/FNA file as a working copy; an already open file returns its records. */
+  openFasta(path: string): Promise<RecordMeta[]> {
+    return invoke<RecordMeta[]>('open_fasta', { path });
+  }
+
+  /** Writes every record of the file to its source, or to `path` (save as). */
+  saveFile(fileId: string, path: string | null, force: boolean): Promise<RecordMeta[]> {
+    return invoke<RecordMeta[]>('save_file', { fileId, path, force });
+  }
+
+  /** Deletes the working copies. Rejects on unsaved changes unless `force`. */
+  closeFile(fileId: string, force: boolean): Promise<void> {
+    return invoke<void>('close_file', { fileId, force });
   }
 
   listRecords(): Promise<RecordMeta[]> {
@@ -26,9 +37,5 @@ export class SequenceStoreService {
 
   search(id: string, query: string, from: number, limit: number): Promise<number[]> {
     return invoke<number[]>('search_sequence', { id, query, from, limit });
-  }
-
-  flush(id: string): Promise<boolean> {
-    return invoke<boolean>('flush_record', { id });
   }
 }
