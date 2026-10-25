@@ -42,7 +42,7 @@ describe('CmdLineService', () => {
   });
 
   it('opens and closes the modal, restoring the previous focus', () => {
-    lyt.focusOn('SidePane');
+    lyt.focusOn('Modal');
     service.open('Command');
     expect(service.mode()).toBe('Command');
     expect(lyt.currentFocus()).toBe('CmdModal');
@@ -50,7 +50,7 @@ describe('CmdLineService', () => {
     service.close();
     expect(service.mode()).toBe(null);
     expect(service.cmdInput()).toBe('');
-    expect(lyt.currentFocus()).toBe('SidePane');
+    expect(lyt.currentFocus()).toBe('Modal');
   });
 
   it(':e opens a file and reports an already open one', async () => {
@@ -162,7 +162,7 @@ describe('CmdLineService', () => {
   });
 
   it('leader runs a mapped key, reports an unmapped one and times out', () => {
-    const toggle = vi.spyOn(lyt, 'toggleSidePane');
+    const toggle = vi.spyOn(lyt, 'toggleModal').mockImplementation(() => {});
     service.open('Leader');
     expect(service.hints()).toEqual([]);
     service.pressLeader('q');

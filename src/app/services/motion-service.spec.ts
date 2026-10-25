@@ -98,6 +98,20 @@ describe('Motions', () => {
     service.handleKeyDown(new KeyboardEvent('keydown', { key: 'f' }));
     expect(cliMocked.pressLeader).toHaveBeenCalledWith('f');
   });
+
+  it('Modal: should route grid moves, Enter and Esc to the layout service', () => {
+    service.lyt.focusOn("Modal");
+    const table: [string, (...arg: any) => void][] = [
+      ['j', lytMocked.moveDown], ['k', lytMocked.moveUp], ['h', lytMocked.moveLeft],
+      ['l', lytMocked.moveRight], ['Enter', lytMocked.handleEnter], ['Escape', lytMocked.handleEsc],
+    ];
+    for (const [key, fn] of table) {
+      service.handleKeyDown(new KeyboardEvent('keydown', { key }));
+      expect(fn).toHaveBeenCalledOnce();
+    }
+    service.handleKeyDown(new KeyboardEvent('keydown', { key: ' ' }));
+    expect(cliMocked.open).toHaveBeenCalledWith('Leader');
+  });
 });
 
 interface keyTriggerEvent {
@@ -119,7 +133,7 @@ class MockedLayoutService {
   moveRight = vi.fn();
 
   handleEnter  = vi.fn();
-  handleEscape = vi.fn();
+  handleEsc    = vi.fn();
 
   toggleInput = vi.fn();
   _setInput = (input: string) => this.currentFocus.mockReturnValue(input);

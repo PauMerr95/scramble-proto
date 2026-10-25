@@ -1,10 +1,10 @@
 import { Component, computed, signal, inject, viewChild} from '@angular/core';
-import { GENOME_QUERY_OPTS, SelectectableQueryBy, RetrieveRoster, SelectectableRetrieve, QueryPacket, SelectableLocation } from '../../../../types/side_types';
-import { LayoutService } from '../../../../services/layout-service';
-import { StdBtn } from "../../../util/std-btn/std-btn";
-import { DropDown } from '../../../util/drop-down/drop-down';
-import { InputText } from '../../../util/input-text/input-text';
-import { DataSessionService } from '../../../../services/data-session-service';
+import { GENOME_QUERY_OPTS, SelectectableQueryBy, RetrieveRoster, SelectectableRetrieve, QueryPacket, SelectableLocation } from '../../../../../types/side_types';
+import { LayoutService } from '../../../../../services/layout-service';
+import { StdBtn } from "../../../../util/std-btn/std-btn";
+import { DropDown } from '../../../../util/drop-down/drop-down';
+import { InputText } from '../../../../util/input-text/input-text';
+import { DataSessionService } from '../../../../../services/data-session-service';
 
 
 

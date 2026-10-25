@@ -1,24 +1,15 @@
-<div class="app-wrapper" [class.hidden]="lyt.sidePaneState() === 'Hidden'">
+<div class="app-wrapper">
 
     <div class="navbar-port">
         <app-navbar
-        (toggleSidePane)="lyt.toggleSidePane($event)"
-        [activeIcon]="lyt.sidePaneState()">
+        (toggleModal)="lyt.toggleModal($event)"
+        [activeIcon]="lyt.modalRoot()">
         </app-navbar>
     </div>
 
     <div class="mainPane-port">
         <app-main-pane></app-main-pane>
     </div>
-
-    @if (lyt.sidePaneState() !== "Hidden") {
-    <div class="sidePane-port">
-        <app-side-pane
-        (hideSidePane)="lyt.toggleSidePane('Hidden')"
-        (switchMode)="switchMode($event)">
-        </app-side-pane>
-    </div>
-    }
 
     <div class="statusbar-port">
         <app-statusbar></app-statusbar>

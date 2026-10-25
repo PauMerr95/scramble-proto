@@ -142,7 +142,7 @@ describe('LayoutService', () => {
   });
 
   it('should relay Enter events correctly for Query Page', () => {
-    service.toggleSidePane("Query");
+    service.toggleModal("Query");
     // === ICONS ===
     const spyTarget = vi.spyOn(service, 'currentlyTargeted');
     const queryPageIcons = selectableLocations.filter(s => s.includes("IconQuery"));
@@ -180,7 +180,52 @@ describe('LayoutService', () => {
 
   test.todo('should relay Enter events correctly for Profile Page');
   test.todo('should support Notification Events');
-  test.todo('should support Modal Events');
+  it('should toggle navbar modals and stack sub-modals', () => {
+    service.toggleModal("Profile");
+    expect(service.activeModal()).toBe("Profile");
+    expect(service.currentFocus()).toBe("Modal");
+    expect(mockedRouter.navigateByUrl).toHaveBeenLastCalledWith("modal/profile");
+
+    // A sub-modal goes on top and closing it returns to the panel underneath.
+    service.openModal("AvatarMenu");
+    expect(service.activeModal()).toBe("AvatarMenu");
+    expect(service.modalRoot()).toBe("Profile");
+    service.closeModal();
+    expect(service.activeModal()).toBe("Profile");
+    expect(service.currentFocus()).toBe("Modal");
+    expect(mockedRouter.navigateByUrl).toHaveBeenLastCalledWith("modal/profile");
+
+    // Another navbar panel replaces the whole stack.
+    service.openModal("AvatarMenu");
+    service.toggleModal("Query");
+    expect(service.activeModal()).toBe("Query");
+    expect(service.modalRoot()).toBe("Query");
+
+    // Toggling the open panel again closes everything.
+    service.toggleModal("Query");
+    expect(service.activeModal()).toBe(null);
+    expect(service.currentFocus()).toBe("MainPane");
+    expect(mockedRouter.navigateByUrl).toHaveBeenLastCalledWith("/");
+  });
+
+  it('should close an open drop down on Esc before closing the modal', () => {
+    service.toggleModal("Profile");
+    service.loadGrid([["ProfileDDThemes"], ["ProfileBtnSave"]]);
+    service.injectIntoGrid({
+      insertLoc: {row: 0, col: 0, offset: 0},
+      origin: "ProfileDDThemes",
+      axis: "row",
+      data: ["0_ProfileDDThemes_DarkLime"],
+    });
+    const spyTriggerDD = vi.spyOn(service, 'triggerDropDown');
+    service.handleEsc();
+    expect(spyTriggerDD).toHaveBeenCalledWith("ProfileDDThemes");
+    expect(service.activeModal()).toBe("Profile");
+
+    service.ejectFromGrid("ProfileDDThemes");  // what the drop down does when it closes
+    service.handleEsc();
+    expect(service.activeModal()).toBe(null);
+  });
   test.todo('should support DropDown Events');
   test.todo('should support Button Events');
   test.todo('should support Input Events');

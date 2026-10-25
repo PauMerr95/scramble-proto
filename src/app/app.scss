@@ -3,14 +3,10 @@
     width: 100%;
     display: grid;
     grid-template-areas: 
-    'nav side main'
-    'nav side stat';
-    grid-template-columns:  40px 200px 1fr;
+    'nav main'
+    'nav stat';
+    grid-template-columns:  40px 1fr;
     grid-template-rows:     1fr 30px;
-    transition: grid-template-columns 0.1s ease;
-}
-.app-wrapper.hidden{
-    grid-template-columns:  40px 0px 1fr;
 }
 
 .navbar-port {
@@ -27,11 +23,6 @@
 .statusbar-port {
     grid-area: stat;
     margin: 0.1em 0 0.1em 0;
-}
-
-.sidePane-port {
-    grid-area: side;
-    margin: 0.1em 0.1em 0 0;
 }
 
 .notification-stack {

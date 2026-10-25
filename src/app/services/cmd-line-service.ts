@@ -183,9 +183,9 @@ export class CmdLineService {
   }
 
   private readonly leaderCmds: Record<string, Command> = {
-    p: () => this.lyt.toggleSidePane("Profile"),
-    f: () => this.lyt.toggleSidePane("Files"),
-    q: () => this.lyt.toggleSidePane("Query"),
+    p: () => this.lyt.toggleModal("Profile"),
+    f: () => this.lyt.toggleModal("Files"),
+    q: () => this.lyt.toggleModal("Query"),
     n: () => this.lyt.dismissNotification(this.lyt.activeNotifications()[0]?.id),
   };
 

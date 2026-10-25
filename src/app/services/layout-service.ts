@@ -1,6 +1,6 @@
 import { Injectable, signal, inject, computed } from '@angular/core';
 import { NavbarLocation, FocusLocation, QueryPage,
-         NotificationObject, ActiveNotification, ModalObject,
+         NotificationObject, ActiveNotification, ModalTitle, modals,
          GridInjector, GridInjection, GridInjectorTracker } from '../types/layout_types';
 import { MoveGrid, SelectableLocation } from '../types/side_types';
 import { CursorPos } from '../types/main_types';
@@ -19,7 +19,6 @@ export class LayoutService {
   private readonly _router = inject(Router);
 
   // === States ===
-  private _sidePaneState = signal<NavbarLocation>("Hidden");
   private _queryPage     = signal<QueryPage>("QueryMain");
   private _currentFocus  = signal<FocusLocation | null>(null);
   readonly activeAvatar  = computed(() => {
@@ -48,10 +47,13 @@ export class LayoutService {
   private _notificationIDCounter = 0;
   private _notificationQueue = signal<NotificationObject[]>([])
   readonly activeNotifications = signal<ActiveNotification[]>([])
-  readonly activeModal = signal<ModalObject | null>(null);
+  // Opened modals, bottom to top. Only the top one is rendered.
+  private _modalStack = signal<ModalTitle[]>([]);
+  readonly activeModal = computed(() => this._modalStack().at(-1) ?? null);
+  // The navbar panel the open modals started from.
+  readonly modalRoot   = computed(() => this._modalStack()[0] ?? null);
 
   // === Exports ===
-  readonly sidePaneState = this._sidePaneState.asReadonly();
   readonly currentFocus = this._currentFocus.asReadonly();
   readonly queryPage = this._queryPage.asReadonly();
   readonly currentTheme = signal<Theme>("DarkLime");
@@ -152,17 +154,6 @@ export class LayoutService {
     return this._currentMoveGrid()![this._selector()!.row][this._selector()!.col];
   }
 
-  toggleSidePane(location: NavbarLocation) {
-    this._sidePaneState.update((currState) => {
-      if (currState === location) {
-        //BUG: Fix at some point - Works fine but could be unsafe in the future
-        this.unloadGrid();
-        return "Hidden";}
-      return location;
-    });
-    (this._sidePaneState() === "Hidden") ? this.focusOn("MainPane") : this.focusOn("SidePane");
-  }
-
   focusOn(foc: FocusLocation | null) {
     this._currentFocus.set(foc);
   }
@@ -177,6 +168,8 @@ export class LayoutService {
   unloadGrid() {
     this._selector.set(null);
     this._currentMoveGrid.set(null);
+    this._gridTracker.validInjection = null;
+    this._gridTracker.injections.clear();
   }
   updateGrid(fn: (mvg: MoveGrid | null) => MoveGrid | null) {
     const newGrid = fn(this._currentMoveGrid());
@@ -258,20 +251,20 @@ export class LayoutService {
   }
 
   handleEsc() {
-    if (this.currentFocus() === "SidePane") {
-      // === remove all injections ===
-      if (this._gridTracker.validInjection !== null) {
-        this._fastEject(this._gridTracker.validInjection);
-        for (let inj in this._gridTracker.injections.keys()) {
-          this._slowEject(inj as GridInjector);
-        }
-      }
+    if (this.currentFocus() !== "Modal") return;
+    // An open drop down closes first; it ejects its options from the grid itself.
+    const openDD = this._gridTracker.validInjection;
+    if (openDD !== null) {
+      this.triggerDropDown(openDD);
+      return;
     }
+    this.closeModal();
   }
 
   handleEnter() {
-    if (this.currentFocus() === "SidePane") {
-      if (this._sidePaneState() === "Query") {
+    if (this.currentFocus() !== "Modal") return;
+    switch (this.activeModal()) {
+      case "Query":
         switch (this.currentlyTargeted()) {
           case "IconQueryGenome":    this.changeQueryPage("Genome"); break;
           case "IconQueryGene":      this.changeQueryPage("Gene"); break;
@@ -291,20 +284,17 @@ export class LayoutService {
           case "QueryInputGenome":       this.toggleInput("QueryInputGenome"); break;
           default: this.checkDropDownOption();
         }
-      }
-      if (this._sidePaneState() === "Profile") {
+        break;
+      case "Profile":
         switch (this.currentlyTargeted()){
-          case "ProfileAvatar":
-            this.openModal({title: "AvatarMenu", route: 'modal/avatars'}); break;
+          case "ProfileAvatar":     this.openModal("AvatarMenu"); break;
           case "ProfileBtnSave":    this.triggerButton("ProfileBtnSave"); break;
           case "ProfileDDThemes":   this.triggerDropDown("ProfileDDThemes"); break;
           default: this.checkDropDownOption();
         }
-      }
-    } else if (this.currentFocus() === "Modal"){
-        switch(this.activeModal()!.title) {
-          case "AvatarMenu": this.changeAvatar(this.currentlyTargeted()!); this.closeModal(); break
-      }
+        break;
+      case "AvatarMenu":
+        this.changeAvatar(this.currentlyTargeted()!); this.closeModal(); break;
     }
   }
 
@@ -350,13 +340,33 @@ export class LayoutService {
     this._drainQueue();
   }
 
-  openModal(modal: ModalObject) {
-    this.activeModal.set(modal);
-    this._router.navigateByUrl(modal.route);
+  /** Navbar and leader: open a panel on its own, or close it if it is already open. */
+  toggleModal(title: NavbarLocation) {
+    if (this.modalRoot() === title) {
+      this.closeAllModals();
+      return;
+    }
+    this._modalStack.set([]);
+    this.openModal(title);
+  }
+  /** Opens a modal on top of the current one; closeModal returns to it. */
+  openModal(title: ModalTitle) {
+    this.unloadGrid();
+    this._modalStack.update(stack => [...stack, title]);
+    this._router.navigateByUrl(modals[title].route);
     this.focusOn("Modal");
   }
+  /** Closes the top modal and goes back to the one underneath, if any. */
   closeModal(){
-    this.activeModal.set(null);
+    this.unloadGrid();
+    this._modalStack.update(stack => stack.slice(0, -1));
+    const top = this.activeModal();
+    this._router.navigateByUrl(top ? modals[top].route : '/');
+    this.focusOn(top ? "Modal" : "MainPane");
+  }
+  closeAllModals(){
+    this.unloadGrid();
+    this._modalStack.set([]);
     this._router.navigateByUrl('/');
     this.focusOn("MainPane");
   }
@@ -365,7 +375,7 @@ export class LayoutService {
     console.log(`
       === Layout Service Debug Information ===
       active Focus:      ${this.currentFocus()},\n
-      Side Pane Status:  ${this.sidePaneState()},\n
+      Modal Stack:       ${this._modalStack()},\n
       Query Page Status: ${this.queryPage()},\n
       MoveGrid:          ${this._currentMoveGrid()},\n
       Selector:          ROW: ${this._selector()?.row} | COL: ${this._selector()?.col} | OFF: ${this._selector()?.offset},\n
@@ -394,7 +404,7 @@ export class LayoutService {
   toggleInput(id: InputID) {
     this.activeInput.update(state => {
       if (state === id) {
-        this.focusOn("SidePane");
+        this.focusOn("Modal");
         return null;
       }
       this.focusOn("InputElement");

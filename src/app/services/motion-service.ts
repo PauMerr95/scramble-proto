@@ -17,8 +17,7 @@ export class MotionService {
     switch (this.lyt.currentFocus()) {
       case "MainPane": this._handleMainPane(e); e.preventDefault(); break;
       case "Navbar":   this._handleNavbar(e); e.preventDefault(); break;
-      case "SidePane": case "Modal":
-                       this._handleStandard(e); break;
+      case "Modal":    this._handleStandard(e); break;
       case "CmdModal": this._handleCmdModal(e); break;
       case "InputElement": this._handleInputElement(e); break;
       default: this.lyt.notify({kind: "Warn", message: "Currently focused element is not registered in motion-service."})
@@ -136,7 +135,7 @@ export class MotionService {
     //TODO: Implement Navbar Motions?
     e.preventDefault();
   }
-  // ---- SIDEPANE MOTIONS ----
+  // ---- MODAL MOTIONS ----
   private _handleStandard(e: KeyboardEvent){
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
     switch(e.key){
@@ -155,8 +154,6 @@ export class MotionService {
   private _handleCmdModal(e: KeyboardEvent){
     if (e.key === "Escape") {
       this.cli.close();
-      // Keep the Esc away from the document-level listener of a modal underneath.
-      e.stopPropagation();
       e.preventDefault();
       return;
     }

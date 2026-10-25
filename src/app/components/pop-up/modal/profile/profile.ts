@@ -5,13 +5,13 @@ import { AvatarDuck } from './avatars/duck/duck';
 import { AvatarFalling } from './avatars/falling/falling';
 import { AvatarEarth } from './avatars/earth/earth';
 import { AvatarSheep } from './avatars/sheep/sheep';
-import { LayoutService } from '../../../services/layout-service';
-import { DataSessionService } from '../../../services/data-session-service';
-import { profileGrid } from '../../../move-grids/mv-grids-sidePane';
-import { DropDown } from "../../util/drop-down/drop-down";
-import { UserDataService } from '../../../services/user-data';
-import { StdBtn } from "../../util/std-btn/std-btn";
-import { themes } from '../../../types/layout_types';
+import { LayoutService } from '../../../../services/layout-service';
+import { DataSessionService } from '../../../../services/data-session-service';
+import { profileGrid } from '../../../../move-grids/mv-grids-modals';
+import { DropDown } from "../../../util/drop-down/drop-down";
+import { UserDataService } from '../../../../services/user-data';
+import { StdBtn } from "../../../util/std-btn/std-btn";
+import { themes } from '../../../../types/layout_types';
 
 
 @Component({
@@ -31,8 +31,8 @@ export class ProfileComponent {
 
   constructor() {
     effect(() => {
-      if (this.lyt.currentFocus() === "SidePane"
-          && this.lyt.sidePaneState() === "Profile") {
+      if (this.lyt.currentFocus() === "Modal"
+          && this.lyt.activeModal() === "Profile") {
         this.lyt.loadGrid(profileGrid);
       }
     });

@@ -6,15 +6,13 @@ import { IconFolder } from '../icons/folder';
 import { IconSearchDB } from '../icons/db_search';
 import { IconCommand } from './command';
 import { IconSearch } from './search';
-import { IconHideSP } from './hide_sidePane';
 
 const ICON_COMPONENTS: Type<unknown>[] = [
     IconProfile,
     IconFolder,
     IconSearchDB,
     IconCommand,
-    IconSearch,
-    IconHideSP
+    IconSearch
 ];
 
 describe('Icon component', () => {
