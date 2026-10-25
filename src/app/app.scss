@@ -4,10 +4,9 @@
     display: grid;
     grid-template-areas: 
     'nav side main'
-    'nav side stat'
-    'nav side cmd';
+    'nav side stat';
     grid-template-columns:  40px 200px 1fr;
-    grid-template-rows:     1fr 30px 60px;
+    grid-template-rows:     1fr 30px;
     transition: grid-template-columns 0.1s ease;
 }
 .app-wrapper.hidden{
@@ -33,12 +32,6 @@
 .sidePane-port {
     grid-area: side;
     margin: 0.1em 0.1em 0 0;
-}
-
-.cmdline-port {
-    grid-area: cmd;
-    height: 100%;
-    margin: 0.1em 0 0 0;
 }
 
 .notification-stack {

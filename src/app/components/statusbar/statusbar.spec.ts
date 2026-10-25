@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { Statusbar } from './statusbar';
+import { CmdLineService } from '../../services/cmd-line-service';
 
 describe('Statusbar', () => {
   let component: Statusbar;
@@ -18,5 +19,16 @@ describe('Statusbar', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('should show the leader badge only while the leader waits for a key', async () => {
+    const cli = TestBed.inject(CmdLineService);
+    expect(fixture.nativeElement.querySelector('.leader-badge')).toBeNull();
+    cli.open('Leader');
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('.leader-badge')).toBeTruthy();
+    cli.close();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('.leader-badge')).toBeNull();
   });
 });

@@ -62,9 +62,42 @@ describe('Motions', () => {
 
   test.todo('MainPane(sqv): should handle mode change events in Normal Mode');
   test.todo('MainPane(sqv): should be able to "Escape" back into Normal Mode');
-  test.todo('MainPane(sqv): should be able to trigger "Leader" in Normal Mode');
-  test.todo('MainPane(sqv): should be able to trigger "Search" in Normal Mode');
-  test.todo('MainPane(sqv): should be able to trigger "Command" in Normal Mode');
+  it('MainPane(sqv): should open the cmd modal from Normal Mode', () => {
+    const table: [string, string][] = [[' ', 'Leader'], ['/', 'Search'], [':', 'Command']];
+    for (const [key, mode] of table) {
+      service.lyt.focusOn("MainPane");
+      service.sqv.setMode("Normal");
+      service.handleKeyDown(new KeyboardEvent('keydown', { key }));
+      expect(cliMocked.open).toHaveBeenCalledWith(mode);
+    }
+  });
+
+  it('CmdModal: should route control keys and let text reach the input', () => {
+    service.lyt.focusOn("CmdModal");
+    cliMocked.mode.mockReturnValue("Command");
+    const table: [string, (...arg: any) => void][] = [
+      ['Enter', cliMocked.submit], ['ArrowUp', cliMocked.historyPrev],
+      ['ArrowDown', cliMocked.historyNext], ['Tab', cliMocked.complete], ['Escape', cliMocked.close],
+    ];
+    for (const [key, fn] of table) {
+      const e = new KeyboardEvent('keydown', { key, cancelable: true });
+      service.handleKeyDown(e);
+      expect(fn).toHaveBeenCalledOnce();
+      expect(e.defaultPrevented).toBe(true);
+    }
+    const typed = new KeyboardEvent('keydown', { key: 'e', cancelable: true });
+    service.handleKeyDown(typed);
+    expect(typed.defaultPrevented).toBe(false);
+  });
+
+  it('CmdModal: should pass single keys to the leader and ignore bare modifiers', () => {
+    service.lyt.focusOn("CmdModal");
+    cliMocked.mode.mockReturnValue("Leader");
+    service.handleKeyDown(new KeyboardEvent('keydown', { key: 'Shift' }));
+    expect(cliMocked.pressLeader).not.toHaveBeenCalled();
+    service.handleKeyDown(new KeyboardEvent('keydown', { key: 'f' }));
+    expect(cliMocked.pressLeader).toHaveBeenCalledWith('f');
+  });
 });
 
 interface keyTriggerEvent {
@@ -108,10 +141,12 @@ class MockedSequenceViewerService {
 }
 
 class MockedCmdLineService {
-  cmdInput     = vi.fn();
-  cmdInputType = vi.fn();
-  handleInput  = vi.fn((inputType) => this.cmdInputType.mockReturnValue(inputType));
-  runInput = vi.fn();
-  abort    = vi.fn(this.cmdInputType.mockReturnValue(null));
-
+  mode        = vi.fn().mockReturnValue(null);
+  open        = vi.fn((mode) => this.mode.mockReturnValue(mode));
+  close       = vi.fn(() => this.mode.mockReturnValue(null));
+  submit      = vi.fn();
+  pressLeader = vi.fn();
+  historyPrev = vi.fn();
+  historyNext = vi.fn();
+  complete    = vi.fn();
 }

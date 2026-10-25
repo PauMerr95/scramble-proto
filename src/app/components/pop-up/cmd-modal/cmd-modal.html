@@ -1,0 +1,38 @@
+<!-- The leader has no overlay: it is a shortcut prefix and must not interrupt the flow. -->
+@if (cli.mode(); as mode) {
+@if (mode !== "Leader") {
+<div class="cmd-backdrop" (mousedown)="cli.close()">
+    <div class="cmd-panel" (mousedown)="keepFocus($event)">
+        <div class="cmd-prompt" [attr.data-mode]="mode">
+            @switch (mode) {
+                @case ("Command") { <app-icon-command class="icon" svg_color="#e362f2"></app-icon-command> }
+                @case ("Search")  { <app-icon-search class="icon" svg_color="#94ff8c"></app-icon-search> }
+            }
+            <span class="prefix">{{ mode === "Command" ? ":" : "/" }}</span>
+            <input #cmdInput class="cmd-input" type="text"
+                spellcheck="false" autocomplete="off"
+                [value]="cli.cmdInput()"
+                (input)="cli.setInput(cmdInput.value)"/>
+        </div>
+
+        @if (cli.hints().length) {
+        <ul class="cmd-hints">
+            @for (hint of cli.hints(); track hint.key) {
+            <li>
+                <span class="hint-usage">{{ hint.usage }}</span>
+                <span class="hint-desc">{{ hint.description }}</span>
+            </li>
+            }
+        </ul>
+        }
+
+        <div class="cmd-footer">
+            @switch (mode) {
+                @case ("Command") { Enter to run · Tab to complete · ↑/↓ history · Esc to cancel }
+                @case ("Search")  { Enter to search · n/N to jump · ↑/↓ history · Esc to cancel }
+            }
+        </div>
+    </div>
+</div>
+}
+}

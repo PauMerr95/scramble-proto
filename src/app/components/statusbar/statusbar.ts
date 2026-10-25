@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, computed, Signal } from '@a
 import { EditorMode } from '../../types/main_types';
 import { CommonModule, SlicePipe } from '@angular/common';
 import { SequenceViewerService } from '../../services/sequence-viewer-service';
+import { CmdLineService } from '../../services/cmd-line-service';
 
 @Component({
   selector: 'app-statusbar',
@@ -11,6 +12,8 @@ import { SequenceViewerService } from '../../services/sequence-viewer-service';
 })
 export class Statusbar { 
   readonly svc = inject(SequenceViewerService);
+  // The leader has no overlay, so the statusbar shows that it waits for a key.
+  readonly cli = inject(CmdLineService);
 
   readonly modeLabel = computed(() => {
     const map: Record<string, string> = {

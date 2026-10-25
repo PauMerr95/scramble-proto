@@ -5,8 +5,6 @@ import { IconProfile } from '../icons/profile';
 import { IconFolder } from '../icons/folder';
 import { IconSearchDB } from '../icons/db_search';
 import { IconCommand } from './command';
-import { IconIdle } from './idle';
-import { IconLeader } from './leader';
 import { IconSearch } from './search';
 import { IconHideSP } from './hide_sidePane';
 
@@ -15,8 +13,6 @@ const ICON_COMPONENTS: Type<unknown>[] = [
     IconFolder,
     IconSearchDB,
     IconCommand,
-    IconIdle,
-    IconLeader,
     IconSearch,
     IconHideSP
 ];

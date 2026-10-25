@@ -11,7 +11,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ScrollingModule, CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 import { SequenceViewerService, LINE_WIDTH } from '../../services/sequence-viewer-service';
 import { SequenceLine } from '../sequence-line/sequence-line';
-import { CmdLineService } from '../../services/cmd-line-service';
 import { LayoutService } from '../../services/layout-service';
 
 
@@ -31,7 +30,6 @@ export class SequenceViewerComponent implements AfterViewInit {
 
   constructor(
     readonly sqv: SequenceViewerService,
-    readonly cli: CmdLineService,
     readonly lyt: LayoutService){
       effect(() => {
         if (this.lyt.currentFocus() === "MainPane") this.shell.nativeElement.focus();

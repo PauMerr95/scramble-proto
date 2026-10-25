@@ -3,6 +3,10 @@
     {{ modeLabel() }}
     </span>
 
+    @if (cli.mode() === "Leader") {
+    <span class="leader-badge">&lt;leader&gt;</span>
+    }
+
     <span class="header-label" [title]="svc.header()">
     {{ svc.header() | slice:0:60 }}{{ (svc.header().length > 60) ? '…' : '' }}
     </span>

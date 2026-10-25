@@ -4,15 +4,15 @@ import { SidePane } from "./components/side-pane/side-pane";
 import { MainPane } from "./components/main-pane/main-pane";
 import { Statusbar } from "./components/statusbar/statusbar";
 import { EditorMode } from './types/main_types';
-import { CmdLine } from "./components/cmd/cmd-line/cmd-line";
 import { LayoutService } from './services/layout-service';
 import { Notification } from "./components/pop-up/notification/notification";
 import { Modal } from "./components/pop-up/modal/modal";
+import { CmdModal } from "./components/pop-up/cmd-modal/cmd-modal";
 import { MotionService } from './services/motion-service';
 
 @Component({
   selector: 'app-root',
-  imports: [Navbar, SidePane, Statusbar, MainPane, CmdLine, Notification, Modal],
+  imports: [Navbar, SidePane, Statusbar, MainPane, Notification, Modal, CmdModal],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })

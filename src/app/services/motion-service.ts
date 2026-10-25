@@ -19,7 +19,7 @@ export class MotionService {
       case "Navbar":   this._handleNavbar(e); e.preventDefault(); break;
       case "SidePane": case "Modal":
                        this._handleStandard(e); break;
-      case "CmdLine":  this._handleCmdLine(e); e.preventDefault(); break;
+      case "CmdModal": this._handleCmdModal(e); break;
       case "InputElement": this._handleInputElement(e); break;
       default: this.lyt.notify({kind: "Warn", message: "Currently focused element is not registered in motion-service."})
     }
@@ -63,21 +63,9 @@ export class MotionService {
       case 'x': this.sqv.deleteAt(this.sqv.cursorPos().offset); break;
       case 'n': this.sqv.jumpToHit(+1); break;
       case 'N': this.sqv.jumpToHit(-1); break;
-      case ' ': {
-        this.lyt.focusOn("CmdLine");
-        this.cli.handleInput("Leader");
-        break;
-      }
-      case '/': {
-        this.lyt.focusOn("CmdLine");
-        this.cli.handleInput("Search");
-        break;
-      }
-      case ':': {
-        this.lyt.focusOn("CmdLine");
-        this.cli.handleInput("Command");
-        break;
-      }
+      case ' ': this.cli.open("Leader");  break;
+      case '/': this.cli.open("Search");  break;
+      case ':': this.cli.open("Command"); break;
       default: return;
     }
     e.preventDefault();
@@ -152,10 +140,7 @@ export class MotionService {
   private _handleStandard(e: KeyboardEvent){
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
     switch(e.key){
-      case ' ':
-        this.lyt.focusOn("CmdLine");
-        this.cli.handleInput("Leader");
-        break;
+      case ' ': this.cli.open("Leader"); break;
       case 'j': case 'ArrowDown':  this.lyt.moveDown();  break;
       case 'k': case 'ArrowUp':    this.lyt.moveUp();    break;
       case 'h': case 'ArrowLeft':  this.lyt.moveLeft();  break;
@@ -166,17 +151,29 @@ export class MotionService {
     e.preventDefault();
   }
   // ---- CMD MOTIONS ----
-  private _handleCmdLine(e: KeyboardEvent){
+  // Every key not handled here must reach the modal's <input>, so no blanket preventDefault.
+  private _handleCmdModal(e: KeyboardEvent){
+    if (e.key === "Escape") {
+      this.cli.close();
+      // Keep the Esc away from the document-level listener of a modal underneath.
+      e.stopPropagation();
+      e.preventDefault();
+      return;
+    }
+    if (this.cli.mode() === "Leader") {
+      // Ignore bare modifiers so e.g. Shift+P still reaches the leader as 'P'.
+      if (e.key.length === 1) this.cli.pressLeader(e.key);
+      e.preventDefault();
+      return;
+    }
     switch(e.key){
-      case "Escape": this.cli.abort(); break;
-      case "Enter" : this.cli.runInput(); break;
+      case "Enter":     this.cli.submit(); break;
+      case "ArrowUp":   this.cli.historyPrev(); break;
+      case "ArrowDown": this.cli.historyNext(); break;
+      case "Tab":       if (!e.shiftKey) this.cli.complete(); break;
+      default: return;
     }
-    if (this.cli.cmdInputType() === "Leader") {
-      this.cli.cmdInput.update(cmd => {
-        return (cmd) ? (cmd + e.key) : e.key;
-      });
-      this.cli.checkLeader();
-    }
+    e.preventDefault();
   }
 
   private _handleInputElement(e: KeyboardEvent) {

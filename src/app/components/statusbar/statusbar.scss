@@ -25,6 +25,15 @@
 .mode-badge[data-mode="Replace"] { background-color: #FF9999; color: black;}
 .mode-badge[data-mode="Visual"]  { background-color: #E29BE9; color: black;}
 
+.leader-badge {
+    padding: 0 10px;
+    border-radius: 3px;
+    font-weight: 700;
+    font-size: 10px;
+    background-color: #ffe563;
+    color: black;
+}
+
 .header-label {
     color: var(--color-std-100, #f9fee7);
     font-size: 10px;
