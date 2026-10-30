@@ -1,6 +1,5 @@
 import { CursorPos } from "./main_types";
-import { SelectableLocation } from "./side_types";
-import { dropDownIDs } from "./util_types";
+import { ButtonID, DropDownID, InputID, dropDownIDs } from "./util_types";
 
 
 export const themes = ["DarkLime", "Ocean", "Catpuccin", "Material", "Swagger", "LightBlue", "LightRed", "LightGreen", "Scramble", "HolyLight", "Vampire", "Doom", "Vanilla", "Tropical"] as const;
@@ -61,3 +60,19 @@ export interface GridInjectorTracker {
   injections: Map<GridInjector, GridInjection>;
 };
 
+// === Move grids ===
+// Ids of everything a modal's move grid can target (see move-grids/mv-grids-modals.ts).
+export const selectableLocations = [
+    // -- SETTINGS --
+    "SettingsSecScramble", "SettingsSecAppearance", "SettingsSecNcbi",
+    "SettingsConfigPath", "SettingsKeyStatus",
+    // -- FILES --
+    "FileItem",
+    // -- QUERY --
+    "IconQueryGenome", "IconQueryGene", "IconQueryProkaryot", "IconQueryVirus", "IconQueryOrganelle",
+] as const;
+// An open drop down injects its options as "<index>_<drop down id>_<option>" (see checkDropDownOption).
+export type DropDownOptionLocation = `${number}_${DropDownID}_${string}`;
+export type SelectableLocation =
+  typeof selectableLocations[number] | ButtonID | DropDownID | InputID | DropDownOptionLocation;
+export type MoveGrid = SelectableLocation[][];

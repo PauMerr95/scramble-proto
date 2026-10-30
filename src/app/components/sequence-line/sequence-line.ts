@@ -56,11 +56,12 @@ function baseClass(base: string): string {
 }
 function cursorClass(absOffset: number, cursorOffset: number | null, mode: EditorMode): string {
   if (cursorOffset === null || absOffset !== cursorOffset) return '';
+  // 'cursor' lets the viewer find it with a cheap class selector.
   switch (mode) {
-    case 'Normal':  return 'cursor-normal';
-    case 'Insert':  return 'cursor-insert';
-    case 'Replace': return 'cursor-replace';
-    case 'Visual':  return 'cursor-normal';
+    case 'Normal':  return 'cursor cursor-normal';
+    case 'Insert':  return 'cursor cursor-insert';
+    case 'Replace': return 'cursor cursor-replace';
+    case 'Visual':  return 'cursor cursor-normal';
   }
 }
 function isSelected(absOffset: number, visualSelection: VisualSelection | null): boolean {

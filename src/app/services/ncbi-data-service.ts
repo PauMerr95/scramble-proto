@@ -1,10 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { QueryPacket, SelectectableQueryBy, SelectectableRetrieve } from '../types/side_types';
+import { QueryPacket, SelectableQueryBy, SelectableRetrieve } from '../types/data_types';
 
 const apiDatasetsV2 = "https://api.ncbi.nlm.nih.gov/datasets/v2/";
 
-const howExtension = new Map<SelectectableQueryBy, string>([
+const howExtension = new Map<SelectableQueryBy, string>([
     ["Assembly Accession"  , 'genome/accession/'],
     ["Nucleotide Accession", 'genome/sequence_accession/'], // can only work with retrieving Assembly Accession
     ["Assembly Name"       , 'genome/assembly_name/'],      // can only work with retrieving Assembly Report
@@ -13,7 +13,7 @@ const howExtension = new Map<SelectectableQueryBy, string>([
     ["Species Taxon"       , 'genome/taxon/'],
     ["WGS Accession"       , 'genome/wgs/']
 ]);
-const whatExtension = new Map<SelectectableRetrieve, string>([
+const whatExtension = new Map<SelectableRetrieve, string>([
   ["Annotation Report"          , 'annotation_report'],
   ["Annotation Data Package"    , 'annotation_report/download'],
   ["Annotation Download Summary", 'annotation_report/download_summary'],
@@ -34,7 +34,7 @@ export class NCBIDataService {
   // private http = inject(HttpClient);
 
   /*
-   *getGenome(kind: SelectectableRetrieve, by: SelectectableQueryBy, byInput: string) {
+   *getGenome(kind: SelectableRetrieve, by: SelectableQueryBy, byInput: string) {
    *  this.http.get()
    *}
    */

@@ -1,10 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { LayoutService } from './layout-service';
 import { Router } from '@angular/router';
-import { MoveGrid } from '../types/side_types';
+import { MoveGrid, SelectableLocation } from '../types/layout_types';
 import { focusLocations, queryPages, GridInjection, GridInjector } from '../types/layout_types';
 import { SettingsService } from './settings-service';
-import { selectableLocations } from '../types/side_types';
+import { selectableLocations } from '../types/layout_types';
 import { signal, WritableSignal } from '@angular/core';
 import { settingsBaseGrid, settingsSectionIds, settingsSubGrids } from '../move-grids/mv-grids-modals';
 
@@ -85,7 +85,7 @@ describe('LayoutService', () => {
       insertLoc: {row: 0, col: 0, offset: 0},
       origin: "Row0Col0" as GridInjector,
       axis: "row",
-      data: ["Injection1", "Injection2"]
+      data: fakeIds("Injection1", "Injection2")
     };
     service.loadGrid(testGrid);
     service.injectIntoGrid(injection);
@@ -103,7 +103,7 @@ describe('LayoutService', () => {
       insertLoc: {row: 4, col: 4, offset: 21},
       origin: "Row4Col4" as GridInjector,
       axis: "col",
-      data: ["Injection3"]
+      data: fakeIds("Injection3")
     };
     service.injectIntoGrid(injection);
     service.injectIntoGrid(killjection); //replaces injection in GridInjectionTracker
@@ -127,7 +127,7 @@ describe('LayoutService', () => {
     expect(service.currentlyTargeted()).toMatch("Row1Col4");
     service.moveRight(); //no change
     expect(service.currentlyTargeted()).toMatch("Row1Col4");
-    service.jumpToID("Row0Col1");
+    service.jumpToID(fakeIds("Row0Col1")[0]);
     expect(service.selector!.offset).toBe(1);
     service.jumpToOffset(22);
     expect(service.currentlyTargeted()).toMatch("Row5Col0");
@@ -147,7 +147,7 @@ describe('LayoutService', () => {
     }
     // === BUTTONS ===
     const queryButtonIDs = [ "RetrieveGenomeBtn", "RetrieveGeneBtn", "RetrieveProkaryotBtn",
-                             "RetrieveVirusBtn", "RetrieveOrganelleBtn" ];
+                             "RetrieveVirusBtn", "RetrieveOrganelleBtn" ] as const;
     const spyTriggerBtn = vi.spyOn(service, 'triggerButton');
     for (let btn of queryButtonIDs) {
       spyTarget.mockReturnValue(btn);
@@ -155,7 +155,7 @@ describe('LayoutService', () => {
       expect(spyTriggerBtn).toHaveBeenCalledWith(btn);
     }
     // === DROPDOWN ===
-    const queryDropDownIDs = [ "QueryDDGenomeOption1", "QueryDDGenomeOption2" ];
+    const queryDropDownIDs = [ "QueryDDGenomeOption1", "QueryDDGenomeOption2" ] as const;
     const spyTriggerDD = vi.spyOn(service, 'triggerDropDown');
     for (let dd of queryDropDownIDs) {
       spyTarget.mockReturnValue(dd);
@@ -163,7 +163,7 @@ describe('LayoutService', () => {
       expect(spyTriggerDD).toHaveBeenCalledWith(dd);
     }
     // === INPUT ===
-    const queryInputIDs = [ "QueryInputGenome" ];
+    const queryInputIDs = [ "QueryInputGenome" ] as const;
     const spyToggleInput = vi.spyOn(service, 'toggleInput');
     for (let input of queryInputIDs) {
       spyTarget.mockReturnValue(input);
@@ -176,7 +176,7 @@ describe('LayoutService', () => {
     service.toggleModal("Settings");
     const spyTarget = vi.spyOn(service, 'currentlyTargeted');
     const spyTriggerBtn = vi.spyOn(service, 'triggerButton');
-    for (const btn of ["SettingsBtnSave", "SettingsBtnSetKey", "SettingsBtnClearKey"]) {
+    for (const btn of ["SettingsBtnSave", "SettingsBtnSetKey", "SettingsBtnClearKey"] as const) {
       spyTarget.mockReturnValue(btn);
       service.handleEnter();
       expect(spyTriggerBtn).toHaveBeenCalledWith(btn);
@@ -187,7 +187,7 @@ describe('LayoutService', () => {
     expect(spyTriggerDD).toHaveBeenCalledWith("SettingsDDThemes");
     // Stubbed: the real one moves focus into the input, after which Enter is ignored.
     const spyToggleInput = vi.spyOn(service, 'toggleInput').mockImplementation(() => {});
-    for (const input of ["SettingsInputWorkDir", "SettingsInputApiKey"]) {
+    for (const input of ["SettingsInputWorkDir", "SettingsInputApiKey"] as const) {
       spyTarget.mockReturnValue(input);
       service.handleEnter();
       expect(spyToggleInput).toHaveBeenCalledWith(input);
@@ -202,8 +202,8 @@ describe('LayoutService', () => {
     service.loadLayeredGrid(settingsBaseGrid, settingsSubGrids.NCBI, settingsSectionIds.NCBI);
     expect(service.currentMoveGrid).toStrictEqual([
       ["SettingsSecScramble", "SettingsKeyStatus"],
-      ["SettingsSecAppearance", "SettingsInputApiKey", "SettingsBtnSetKey", "SettingsBtnClearKey"],
-      ["SettingsSecNcbi"],
+      ["SettingsSecAppearance", "SettingsInputApiKey"],
+      ["SettingsSecNcbi", "SettingsBtnSetKey", "SettingsBtnClearKey"],
       ["SettingsBtnSave"],
     ]);
     service.jumpToID("SettingsSecNcbi");
@@ -220,9 +220,9 @@ describe('LayoutService', () => {
   });
 
   it('should append sub rows past the base and ignore setSubGrid without a base', () => {
-    service.setSubGrid([["A"]]);
+    service.setSubGrid(fakeGrid([["A"]]));
     expect(service.currentMoveGrid).toBe(null);
-    service.loadLayeredGrid([["Base0"]], [["Sub0"], ["Sub1", "Sub1b"]]);
+    service.loadLayeredGrid(fakeGrid([["Base0"]]), fakeGrid([["Sub0"], ["Sub1", "Sub1b"]]));
     expect(service.currentMoveGrid).toStrictEqual([["Base0", "Sub0"], ["Sub1", "Sub1b"]]);
   });
 
@@ -246,10 +246,16 @@ describe('LayoutService', () => {
     service.jumpToID("SettingsKeyStatus");
     service.moveDown();
     expect(service.currentlyTargeted()).toBe("SettingsInputApiKey");
-    service.moveRight();
-    expect(service.currentlyTargeted()).toBe("SettingsBtnSetKey");
     service.moveDown();
     expect(service.currentlyTargeted()).toBe("SettingsBtnSetKey");
+    service.moveRight();
+    expect(service.currentlyTargeted()).toBe("SettingsBtnClearKey");
+    // The base row below (Save) is not part of the sub-grid, so j stays put.
+    service.moveDown();
+    expect(service.currentlyTargeted()).toBe("SettingsBtnClearKey");
+    // The input row is narrower: k clamps to its only cell.
+    service.moveUp();
+    expect(service.currentlyTargeted()).toBe("SettingsInputApiKey");
     service.moveUp();
     expect(service.currentlyTargeted()).toBe("SettingsKeyStatus");
   });
@@ -272,10 +278,10 @@ describe('LayoutService', () => {
   it('should clamp the selector into a smaller grid', () => {
     service.loadGrid(testGrid);
     service.jumpToOffset(9);   // Row1Col4
-    service.loadGrid([["A", "B"], ["C"]]);
+    service.loadGrid(fakeGrid([["A", "B"], ["C"]]));
     expect(service.selector).toStrictEqual({ row: 1, col: 0, offset: 2 });
     expect(service.currentlyTargeted()).toBe("C");
-    service.loadGrid([["A"]]);
+    service.loadGrid(fakeGrid([["A"]]));
     expect(service.selector).toStrictEqual({ row: 0, col: 0, offset: 0 });
   });
 
@@ -356,14 +362,22 @@ describe('LayoutService', () => {
   test.todo('should support Input Events');
 });
 
-const testGrid: MoveGrid = [
+// The grid mechanics don't care about the ids, so these specs use made-up ones.
+function fakeGrid(rows: string[][]): MoveGrid {
+  return rows as MoveGrid;
+}
+function fakeIds(...ids: string[]): SelectableLocation[] {
+  return ids as SelectableLocation[];
+}
+
+const testGrid: MoveGrid = fakeGrid([
   ["Row0Col0", "Row0Col1", "Row0Col2", "Row0Col3", "Row0Col4"],
   ["Row1Col0", "Row1Col1", "Row1Col2", "Row1Col3", "Row1Col4"],
   ["Row2Col0", "Row2Col1", "Row2Col2"],
   ["Row3Col0", "Row3Col1", "Row3Col2", "Row3Col3"],
   ["Row4Col0", "Row4Col1", "Row4Col2", "Row4Col3", "Row4Col4"],
   ["Row5Col0"]
-];
+]);
 
 const mockedRouter = {
   navigateByUrl: vi.fn(),

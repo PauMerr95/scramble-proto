@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { Statusbar } from './statusbar';
 import { CmdLineService } from '../../services/cmd-line-service';
+import { PaneService } from '../../services/pane-service';
 
 describe('Statusbar', () => {
   let component: Statusbar;
@@ -30,5 +31,13 @@ describe('Statusbar', () => {
     cli.close();
     await fixture.whenStable();
     expect(fixture.nativeElement.querySelector('.leader-badge')).toBeNull();
+  });
+
+  it('should show the number of the active pane', async () => {
+    const badge = () => fixture.nativeElement.querySelector('.pane-badge')?.textContent?.trim();
+    expect(badge()).toBe('1');
+    TestBed.inject(PaneService).split('Horizontal');
+    await fixture.whenStable();
+    expect(badge()).toBe('3');
   });
 });

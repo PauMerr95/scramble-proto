@@ -1,8 +1,8 @@
 import { Injectable, signal, inject, computed, untracked } from '@angular/core';
 import { NavbarLocation, FocusLocation, QueryPage,
          NotificationObject, ActiveNotification, ModalTitle, modals,
-         GridInjector, GridInjection, GridInjectorTracker } from '../types/layout_types';
-import { MoveGrid, SelectableLocation } from '../types/side_types';
+         GridInjector, GridInjection, GridInjectorTracker,
+         MoveGrid, SelectableLocation } from '../types/layout_types';
 import { CursorPos } from '../types/main_types';
 import { Router } from '@angular/router';
 import { SettingsService } from './settings-service';
@@ -435,7 +435,7 @@ export class LayoutService {
   }
   mvGrid_toString(grid: MoveGrid | null): string {
     if (!grid) return ""
-    return `[${grid.map(arr => '\t[' + arr.reduce((a, b) => a + ', ' + b) + '],\n')}]`;
+    return `[${grid.map(arr => '\t[' + arr.join(', ') + '],\n')}]`;
   }
 
 

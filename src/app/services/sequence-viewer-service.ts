@@ -1,10 +1,11 @@
-import { Injectable, signal, computed, inject, effect, untracked } from '@angular/core';
+import { Injectable, signal, computed, inject, effect, untracked, DestroyRef } from '@angular/core';
 import { EditorMode, VisualSelection, RecordMeta, EditOp } from '../types/main_types';
 import { DataSessionService } from './data-session-service';
 import { SequenceStoreService } from './sequence-store-service';
 import { LayoutService } from './layout-service';
+import { EditQueueService } from './edit-queue-service';
 
-export const LINE_WIDTH = 120;
+export const LINE_WIDTH = 90;
 export const CHUNK_LINES = 256;                       // lines fetched per backend window
 export const CHUNK_BASES = LINE_WIDTH * CHUNK_LINES;
 export const MAX_CACHED_CHUNKS = 64;
@@ -15,22 +16,28 @@ interface Chunk {
   generation: number;     // stale (still shown, but refetched) when older than the current one
 }
 
-@Injectable({
-  providedIn: 'root',
-})
+/**
+ * One viewer per SubPane (PaneService creates them), each with its own record, cursor, mode
+ * and window cache. Edits of all viewers go through the shared EditQueueService.
+ */
+@Injectable()
 export class SequenceViewerService {
   readonly data  = inject(DataSessionService);
   readonly store = inject(SequenceStoreService);
   readonly lyt   = inject(LayoutService);
+  readonly edits = inject(EditQueueService);
 
   readonly records = this.data.records;
-  readonly activeRecordIdx = signal<number>(0);
+  // Tracked by id: closing another file shifts the indices under it.
+  private readonly activeRecordId = signal<string | null>(null);
+  private lastIdx = 0;
 
   readonly activeRecord = computed<RecordMeta | null>(() => {
-    const recs = this.records();
-    const idx  = this.activeRecordIdx();
-    return recs[idx] ?? null;
+    const id = this.activeRecordId();
+    return this.records().find(rec => rec.id === id) ?? null;
   });
+  readonly activeRecordIdx = computed<number>(() =>
+    this.records().findIndex(rec => rec.id === this.activeRecordId()));
   readonly length   = computed<number>(()   => this.activeRecord()?.length ?? 0);
   readonly header   = computed<string>(()   => this.activeRecord()?.header ?? '');
   readonly comments = computed<string[]>(() => this.activeRecord()?.comments ?? []);
@@ -50,24 +57,25 @@ export class SequenceViewerService {
   private readonly inflight = new Map<number, number>();    // chunk index -> requested generation
   private visibleLines = { start: 0, end: 0 };
 
-  // --- Edit pipeline: ops go to the backend strictly in order ---
-  private editQueue: Promise<void> = Promise.resolve();
-  private pendingEdits = 0;
-
   constructor() {
-    let prevLength = 0;
+    // Newly opened files go to the active pane (PaneService); here a viewer only moves on
+    // when its own record was closed, or picks the newest one while it shows nothing.
     effect(() => {
-      const currLength = this.records().length;
+      const recs = this.records();
       untracked(() => {
-        if (currLength > prevLength) {
-          this.selectRecord(currLength - 1);
-        } else if (currLength < prevLength) {
-          // A closed file can shift another record under the active index: reload either way.
-          this.selectRecord(Math.min(this.activeRecordIdx(), currLength - 1));
+        if (this.activeRecord()) return;
+        if (this.activeRecordId() !== null) {
+          this.selectRecord(Math.min(this.lastIdx, recs.length - 1));
+        } else {
+          this.selectRecord(recs.length - 1);
         }
       });
-      prevLength = currLength;
     });
+    // An edit from any pane showing this record makes its windows stale.
+    const unsubscribe = this.edits.onApplied((recordId, offset) => {
+      if (this.activeRecord()?.id === recordId) this.invalidateFrom(offset);
+    });
+    inject(DestroyRef).onDestroy(unsubscribe);
   }
 
   readonly cursorPos = computed(() => {
@@ -88,9 +96,11 @@ export class SequenceViewerService {
   //-----------------------------
   selectRecord(index: number): void {
     const recs = this.records();
-    if (index < 0 || index >= recs.length) return;
+    // Without any record left the viewer shows nothing.
+    if (recs.length > 0 && (index < 0 || index >= recs.length)) return;
 
-    this.activeRecordIdx.set(index);
+    this.activeRecordId.set(recs[index]?.id ?? null);
+    this.lastIdx = Math.max(0, index);
     this.resetCache();
     this.searchHits.set([]);
     this.cursorOffset.set(0);
@@ -260,7 +270,7 @@ export class SequenceViewerService {
   async save(path: string | null = null, force = false): Promise<string | null> {
     const rec = this.activeRecord();
     if (!rec) return null;
-    await this.editQueue;
+    await this.edits.settled();
     const saved = await this.data.saveFile(rec.fileId, path, force);
     return saved[0]?.source ?? null;
   }
@@ -269,37 +279,14 @@ export class SequenceViewerService {
   async close(force = false): Promise<string | null> {
     const rec = this.activeRecord();
     if (!rec) return null;
-    await this.editQueue;
+    await this.edits.settled();
     await this.data.closeFile(rec.fileId, force);
     return rec.source;
   }
 
-  /**
-   * Updates the length optimistically so cursor logic stays synchronous, then sends the op.
-   * The backend collects ops and writes them to disk in batches in the background.
-   */
   private edit(op: EditOp, lengthDelta: number): void {
     const rec = this.activeRecord();
     if (!rec) return;
-    this.data.patchRecord(rec.id, { length: rec.length + lengthDelta, modified: true });
-    this.pendingEdits++;
-
-    this.editQueue = this.editQueue
-      .then(async () => {
-        const meta = await this.store.applyEdits(rec.id, [op]);
-        // Only trust the backend's length once no optimistic updates are outstanding.
-        if (this.pendingEdits === 1) this.data.patchRecord(rec.id, meta);
-        if (this.activeRecord()?.id === rec.id) this.invalidateFrom(op.offset);
-      })
-      .catch(async err => {
-        // Must not rethrow: a rejected queue would silently drop every later edit.
-        this.lyt.notify({ kind: "Error", message: `Edit rejected: ${err}` });
-        try {
-          const fresh = (await this.store.listRecords()).find(r => r.id === rec.id);
-          if (fresh) this.data.patchRecord(rec.id, fresh);
-        } catch { /* keep the optimistic state; the next successful edit corrects it */ }
-        if (this.activeRecord()?.id === rec.id) this.invalidateFrom(0);
-      })
-      .finally(() => this.pendingEdits--);
+    this.edits.enqueue(rec, op, lengthDelta);
   }
 }

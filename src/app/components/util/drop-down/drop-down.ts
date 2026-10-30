@@ -4,7 +4,7 @@ import { DropDownItem } from './drop-down-item/drop-down-item';
 import { LayoutService } from '../../../services/layout-service';
 import { ScrollingModule, CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 import { IconCaretDown } from '../../icons/caret-down';
-import { GridInjection } from '../../../types/layout_types';
+import { DropDownOptionLocation, GridInjection } from '../../../types/layout_types';
 
 //  INFO:
 //  ===Inputs===
@@ -171,7 +171,7 @@ export class DropDown {
                    structuredClone(this.lyt.selector!) : this.lyt.bruteFind(this.id())!,
         origin: this.id(),
         axis: "row",
-        data: this.optionList().map((opt, idx) => `${idx}_${this.id()}_${opt}`)
+        data: this.optionList().map((opt, idx): DropDownOptionLocation => `${idx}_${this.id()}_${opt}`)
       };
       this.lyt.injectIntoGrid(injection);
     } else {

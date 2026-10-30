@@ -1,5 +1,5 @@
 import { Theme } from "./layout_types";
-import { SelectectableQueryBy, SelectectableRetrieve } from "./side_types";
+import { SelectableQueryBy, SelectableRetrieve } from "./data_types";
 
 export const buttonIDs = [
     "TestButton1",
@@ -29,5 +29,5 @@ export type ButtonID = typeof buttonIDs[number];
 export type DropDownID = typeof dropDownIDs[number];
 export type InputID = typeof inputIDs[number];
 
-export type DropDownOption = Theme | SelectectableQueryBy | SelectectableRetrieve;
+export type DropDownOption = Theme | SelectableQueryBy | SelectableRetrieve;
 

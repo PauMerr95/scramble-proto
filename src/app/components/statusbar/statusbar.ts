@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, computed, Signal } from '@a
 import { EditorMode } from '../../types/main_types';
 import { CommonModule, SlicePipe } from '@angular/common';
 import { SequenceViewerService } from '../../services/sequence-viewer-service';
+import { PaneService } from '../../services/pane-service';
 import { CmdLineService } from '../../services/cmd-line-service';
 
 @Component({
@@ -11,7 +12,9 @@ import { CmdLineService } from '../../services/cmd-line-service';
   styleUrl: './statusbar.scss',
 })
 export class Statusbar { 
-  readonly svc = inject(SequenceViewerService);
+  readonly panes = inject(PaneService);
+  // Shows the viewer of the active pane.
+  get svc(): SequenceViewerService { return this.panes.activeViewer(); }
   // The leader has no overlay, so the statusbar shows that it waits for a key.
   readonly cli = inject(CmdLineService);
 

@@ -1,4 +1,17 @@
-<div class="main-pane-wrapper">
-    <app-sequence-viewer-component></app-sequence-viewer-component>
+<div class="main-pane-wrapper pane-grid" #grid>
+    @for (cell of cells(); track cell.pane.id) {
+        <div class="pane-cell"
+            [style.left.%]="cell.box.left" [style.top.%]="cell.box.top"
+            [style.width.%]="cell.box.width" [style.height.%]="cell.box.height">
+            <app-sub-pane [pane]="cell.pane"></app-sub-pane>
+        </div>
+    }
+    @for (divider of dividers(); track $index) {
+        <div class="divider"
+            [class.col-divider]="divider.target.kind === 'Col'"
+            [class.row-divider]="divider.target.kind === 'Row'"
+            [style.left.%]="divider.box.left" [style.top.%]="divider.box.top"
+            [style.width.%]="divider.box.width" [style.height.%]="divider.box.height"
+            (pointerdown)="startDrag(divider.target, $event)"></div>
+    }
 </div>
-  

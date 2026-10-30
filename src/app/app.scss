@@ -17,6 +17,7 @@
 .mainPane-port {
     grid-area: main;
     margin: 0.1em 0 0 0;
+    min-height: 0;      /* the 1fr row must not grow with the panes */
 }
 
 

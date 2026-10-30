@@ -5,12 +5,14 @@ import { DataSessionService } from './data-session-service';
 import { LayoutService } from './layout-service';
 import { SequenceStoreService } from './sequence-store-service';
 import { FakeSequenceStore } from './fake-sequence-store.mock';
+import { PaneService } from './pane-service';
 
 describe('CmdLineService', () => {
   let service: CmdLineService;
   let data: DataSessionService;
   let lyt: LayoutService;
   let store: FakeSequenceStore;
+  let panes: PaneService;
   let notify: ReturnType<typeof vi.spyOn>;
 
   async function run(cmd: string) {
@@ -29,6 +31,7 @@ describe('CmdLineService', () => {
     service = TestBed.inject(CmdLineService);
     data = TestBed.inject(DataSessionService);
     lyt = TestBed.inject(LayoutService);
+    panes = TestBed.inject(PaneService);
     notify = vi.spyOn(lyt, 'notify');
     lyt.focusOn('MainPane');
   });
@@ -99,6 +102,50 @@ describe('CmdLineService', () => {
     expect(store.saveFile).toHaveBeenCalledBefore(store.closeFile);
   });
 
+  it(':pd removes the active pane but keeps its file open', async () => {
+    await run('e /data/a.fa');
+    await run('pd');
+    expect(lastNotification()).toEqual({ kind: 'Warn', message: 'Cannot remove the last pane' });
+    expect(panes.count()).toBe(1);
+
+    panes.split('Vertical');
+    await run('pd');
+    expect(panes.count()).toBe(1);
+    expect(data.records().length).toBe(1);
+    expect(panes.activeViewer().activeRecord()?.source).toBe('/data/a.fa');
+  });
+
+  it(':pq closes the file and the pane, :pq! discards changes', async () => {
+    await run('e /data/a.fa');
+    panes.split('Vertical');
+    await store.applyEdits(data.records()[0].id, [{ kind: 'insert', offset: 0, bases: 'A' }]);
+
+    await run('pq');
+    expect(lastNotification().message).toContain('unsaved changes');
+    expect(panes.count()).toBe(2);
+    expect(data.records().length).toBe(1);
+
+    await run('pq!');
+    expect(panes.count()).toBe(1);
+    expect(data.records()).toEqual([]);
+  });
+
+  it(':pq in the last pane closes the file like :q', async () => {
+    await run('e /data/a.fa');
+    await run('pq');
+    expect(lastNotification().kind).toBe('Success');
+    expect(data.records()).toEqual([]);
+    expect(panes.count()).toBe(1);
+  });
+
+  it(':toggleAnnotation and <leader> a toggle the overlay of the active pane', async () => {
+    await run('toggleAnnotation');
+    expect(panes.active().overlayOpen()).toBe(true);
+    service.open('Leader');
+    service.pressLeader('a');
+    expect(panes.active().overlayOpen()).toBe(false);
+  });
+
   it(':w without an open file fails', async () => {
     await run('w');
     expect(lastNotification()).toEqual({ kind: 'Error', message: 'No open file to write' });
@@ -165,12 +212,21 @@ describe('CmdLineService', () => {
     const toggle = vi.spyOn(lyt, 'toggleModal').mockImplementation(() => {});
     service.open('Leader');
     expect(service.hints()).toEqual([]);
-    service.pressLeader('q');
+    service.pressLeader('d');
     expect(toggle).toHaveBeenCalledWith('Query');
     expect(service.mode()).toBe(null);
     service.open('Leader');
     service.pressLeader('s');
     expect(toggle).toHaveBeenCalledWith('Settings');
+
+    // q removes the active pane, like :pd.
+    panes.split('Vertical');
+    service.open('Leader');
+    service.pressLeader('q');
+    expect(panes.count()).toBe(1);
+    service.open('Leader');
+    service.pressLeader('q');
+    expect(lastNotification()).toEqual({ kind: 'Warn', message: 'Cannot remove the last pane' });
 
     service.open('Leader');
     service.pressLeader('z');

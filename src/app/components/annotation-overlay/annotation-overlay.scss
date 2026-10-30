@@ -1,0 +1,39 @@
+:host {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;   /* the uncovered half stays clickable */
+    z-index: 2;
+}
+
+.annotation-overlay {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 50%;
+    box-sizing: border-box;
+    padding: 8px 12px;
+    pointer-events: auto;
+
+    /* very light transparency: the sequence shows through a little */
+    background: color-mix(in srgb, var(--color-std-950, #1B2201) 88%, transparent);
+    color:      var(--color-std-100, #f9fee7);
+    border-left: 1px solid var(--color-std-700, #749306);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+
+    transition: left 180ms ease;
+}
+.side-left {
+    left: 0;
+    border-left: none;
+    border-right: 1px solid var(--color-std-700, #749306);
+}
+.side-right { left: 50%; }
+
+.overlay-header {
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+}
+.overlay-body { opacity: 0.7; }

@@ -1,5 +1,6 @@
 import { Component, computed, signal, inject, viewChild} from '@angular/core';
-import { GENOME_QUERY_OPTS, SelectectableQueryBy, RetrieveRoster, SelectectableRetrieve, QueryPacket, SelectableLocation } from '../../../../../types/side_types';
+import { GENOME_QUERY_OPTS, SelectableQueryBy, RetrieveRoster, SelectableRetrieve, QueryPacket } from '../../../../../types/data_types';
+import { SelectableLocation } from '../../../../../types/layout_types';
 import { LayoutService } from '../../../../../services/layout-service';
 import { StdBtn } from "../../../../util/std-btn/std-btn";
 import { DropDown } from '../../../../util/drop-down/drop-down';
@@ -20,8 +21,8 @@ export class QueryGenomePage {
   readonly data = inject(DataSessionService);
   readonly inputRef = viewChild<InputText>('input');
 
-  readonly firstSelection   = signal<SelectectableQueryBy | null>(null);
-  readonly secondSelection  = signal<SelectectableRetrieve | null>(null);
+  readonly firstSelection   = signal<SelectableQueryBy | null>(null);
+  readonly secondSelection  = signal<SelectableRetrieve | null>(null);
 
   readonly secondOptions = computed(() => {
     const selection: RetrieveRoster = [
@@ -43,14 +44,14 @@ export class QueryGenomePage {
       { value: 'CheckM Histogramm',           compatibleWith: ['Species Taxon']},
     ];
     if (this.firstSelection() === null) return null
-    const filteredSelection = selection.filter(opt => opt.compatibleWith.includes(this.firstSelection() as SelectectableQueryBy));
-    const options: SelectectableRetrieve[] = [];
+    const filteredSelection = selection.filter(opt => opt.compatibleWith.includes(this.firstSelection() as SelectableQueryBy));
+    const options: SelectableRetrieve[] = [];
     filteredSelection.forEach(rosterItem => options.push(rosterItem.value));
     return options;
   });
 
   readonly helpFirstSelection = computed(() => {
-    const mapHelp = new Map<SelectectableQueryBy, string>([
+    const mapHelp = new Map<SelectableQueryBy, string>([
       ["Assembly Accession",
         "GCF_000001635.27"],
       ["Nucleotide Accession",
@@ -67,11 +68,11 @@ export class QueryGenomePage {
         "JAXUCZ01"],
     ]);
     if (this.firstSelection() === null) return null;
-    return mapHelp.get(this.firstSelection() as SelectectableQueryBy);
+    return mapHelp.get(this.firstSelection() as SelectableQueryBy);
   });
 
   readonly helpSecondSelection = computed(() => {
-    const mapHelp = new Map<SelectectableRetrieve, string>([
+    const mapHelp = new Map<SelectableRetrieve, string>([
       ["Annotation Report",
         "Retrieves a list of annotation reports corresponding to the query parameters"],
       ["Annotation Data Package",
@@ -96,7 +97,7 @@ export class QueryGenomePage {
         "Retrieves CheckM histogram data by species taxon. This data is used for rendering CheckM histograms on bacterial genome pages"],
     ]);
     if (this.secondSelection() === null) return null;
-    return mapHelp.get(this.secondSelection()! as SelectectableRetrieve);
+    return mapHelp.get(this.secondSelection()! as SelectableRetrieve);
   });
 
   generateAndLogURL(){

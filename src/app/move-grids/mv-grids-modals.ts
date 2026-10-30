@@ -1,4 +1,4 @@
-import { MoveGrid, SelectableLocation } from "../types/side_types";
+import { MoveGrid, SelectableLocation } from "../types/layout_types";
 import { SettingsSection } from "../types/layout_types";
 
 // Settings: a layered grid (LayoutService.loadLayeredGrid). The base is the section list plus
@@ -25,7 +25,8 @@ export const settingsSubGrids: Record<SettingsSection, MoveGrid> = {
     ],
     NCBI: [
         ["SettingsKeyStatus"],
-        ["SettingsInputApiKey", "SettingsBtnSetKey", "SettingsBtnClearKey"],
+        ["SettingsInputApiKey"],
+        ["SettingsBtnSetKey", "SettingsBtnClearKey"],
     ],
 };
 

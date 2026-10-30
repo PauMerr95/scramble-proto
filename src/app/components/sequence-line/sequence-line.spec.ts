@@ -19,4 +19,15 @@ describe('SequenceLine', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  it('marks the base under the cursor with a plain cursor class', async () => {
+    fixture.componentRef.setInput('line', 'ACGT');
+    fixture.componentRef.setInput('cursorOffset', 2);
+    fixture.componentRef.setInput('mode', 'Insert');
+    await fixture.whenStable();
+    const cursors = fixture.nativeElement.querySelectorAll('.cursor');
+    expect(cursors.length).toBe(1);
+    expect(cursors[0].textContent).toBe('G');
+    expect(cursors[0].classList).toContain('cursor-insert');
+  });
 });

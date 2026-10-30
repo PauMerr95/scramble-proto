@@ -1,0 +1,11 @@
+<div class="sub-pane" [class.active]="isActive()" (mousedown)="panes.focus(pane().id)">
+    <app-sequence-viewer-component
+        [sqv]="pane().viewer"
+        [active]="isActive()"
+        (cursorPlace)="panes.reportCursor(pane().id, $event)">
+        @if (pane().overlayOpen()) {
+            <app-annotation-overlay [side]="pane().overlaySide()"></app-annotation-overlay>
+        }
+    </app-sequence-viewer-component>
+    <span class="pane-number" title="Pane {{ slot() }}">{{ slot() }}</span>
+</div>

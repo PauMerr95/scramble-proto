@@ -1,15 +1,18 @@
+import { inject } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
 import { MotionService } from './motion-service';
 import { LayoutService } from './layout-service';
 import { SequenceViewerService, LINE_WIDTH } from './sequence-viewer-service';
 import { CmdLineService } from './cmd-line-service';
+import { PaneService } from './pane-service';
 
 describe('Motions', () => {
   let service: MotionService;
   let lytMocked: MockedLayoutService;
   let sqvMocked: MockedSequenceViewerService;
   let cliMocked: MockedCmdLineService;
+  let panesMocked: MockedPaneService;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -20,13 +23,16 @@ describe('Motions', () => {
           { provide: SequenceViewerService,
             useClass: MockedSequenceViewerService},
           { provide: CmdLineService,
-            useClass: MockedCmdLineService}
+            useClass: MockedCmdLineService},
+          { provide: PaneService,
+            useClass: MockedPaneService}
       ]
     });
     service = TestBed.inject(MotionService);
     lytMocked = TestBed.inject(LayoutService) as unknown as MockedLayoutService;
     sqvMocked = TestBed.inject(SequenceViewerService) as unknown as MockedSequenceViewerService;
     cliMocked = TestBed.inject(CmdLineService) as unknown as MockedCmdLineService;
+    panesMocked = TestBed.inject(PaneService) as unknown as MockedPaneService;
   });
 
   afterEach(() => {
@@ -70,6 +76,81 @@ describe('Motions', () => {
       service.handleKeyDown(new KeyboardEvent('keydown', { key }));
       expect(cliMocked.open).toHaveBeenCalledWith(mode);
     }
+  });
+
+  it('MainPane(panes): acts on the viewer of the active pane', () => {
+    expect(service.sqv).toBe(sqvMocked);
+    const other = new MockedSequenceViewerService();
+    panesMocked.activeViewer.mockReturnValue(other as unknown as SequenceViewerService);
+    service.lyt.focusOn("MainPane");
+    service.handleKeyDown(new KeyboardEvent('keydown', { key: 'l' }));
+    expect(other.moveCursor).toHaveBeenCalledWith(+1);
+    expect(sqvMocked.moveCursor).not.toHaveBeenCalled();
+  });
+
+  it('MainPane(panes): Ctrl+w v / Ctrl+w s split the active pane', () => {
+    service.lyt.focusOn("MainPane");
+    const table: [string, boolean, string][] = [
+      ['v', false, 'Vertical'], ['s', false, 'Horizontal'], ['v', true, 'Vertical'], ['s', true, 'Horizontal'],
+    ];
+    for (const [key, ctrlKey, axis] of table) {
+      const prefix = new KeyboardEvent('keydown', { key: 'w', ctrlKey: true, cancelable: true });
+      service.handleKeyDown(prefix);
+      expect(prefix.defaultPrevented).toBe(true);          // the webview must not close the window
+      service.handleKeyDown(new KeyboardEvent('keydown', { key: 'Control', ctrlKey: true }));
+      service.handleKeyDown(new KeyboardEvent('keydown', { key, ctrlKey }));
+      expect(panesMocked.split).toHaveBeenLastCalledWith(axis);
+    }
+    expect(panesMocked.split).toHaveBeenCalledTimes(4);
+    expect(sqvMocked.setMode).not.toHaveBeenCalledWith('Visual');
+  });
+
+  it('MainPane(panes): any other key after Ctrl+w cancels the prefix and is swallowed', () => {
+    service.lyt.focusOn("MainPane");
+    service.handleKeyDown(new KeyboardEvent('keydown', { key: 'w', ctrlKey: true }));
+    service.handleKeyDown(new KeyboardEvent('keydown', { key: 'x' }));
+    expect(panesMocked.split).not.toHaveBeenCalled();
+    expect(sqvMocked.deleteAt).not.toHaveBeenCalled();
+
+    service.handleKeyDown(new KeyboardEvent('keydown', { key: 'x' }));
+    expect(sqvMocked.deleteAt).toHaveBeenCalledOnce();
+  });
+
+  it('MainPane(panes): Ctrl+w does not stay armed once the focus leaves the main pane', () => {
+    service.lyt.focusOn("MainPane");
+    service.handleKeyDown(new KeyboardEvent('keydown', { key: 'w', ctrlKey: true }));
+    service.lyt.focusOn("Modal");
+    service.handleKeyDown(new KeyboardEvent('keydown', { key: 'j' }));
+    service.lyt.focusOn("MainPane");
+    service.handleKeyDown(new KeyboardEvent('keydown', { key: 'x' }));
+    expect(sqvMocked.deleteAt).toHaveBeenCalledOnce();
+  });
+
+  it('MainPane(panes): pane keys work in Insert mode without typing', () => {
+    service.lyt.focusOn("MainPane");
+    sqvMocked.setMode('Insert');
+    service.handleKeyDown(new KeyboardEvent('keydown', { key: 'w', ctrlKey: true }));
+    service.handleKeyDown(new KeyboardEvent('keydown', { key: 's' }));
+    service.handleKeyDown(new KeyboardEvent('keydown', { key: 'a', code: 'KeyA', altKey: true }));
+    service.handleKeyDown(new KeyboardEvent('keydown', { key: 'h', code: 'KeyH', altKey: true }));
+    expect(panesMocked.split).toHaveBeenCalledWith('Horizontal');
+    expect(panesMocked.move).toHaveBeenCalledWith('Left');
+    expect(sqvMocked.insertAt).not.toHaveBeenCalled();
+  });
+
+  it('MainPane(panes): Alt+h/j/k/l move between panes', () => {
+    service.lyt.focusOn("MainPane");
+    // e.code, since Alt changes e.key on some layouts (macOS: Alt+h is '˙').
+    const table: [string, string, string][] = [
+      ['˙', 'KeyH', 'Left'], ['j', 'KeyJ', 'Down'], ['k', 'KeyK', 'Up'], ['l', 'KeyL', 'Right'],
+    ];
+    for (const [key, code, dir] of table) {
+      const e = new KeyboardEvent('keydown', { key, code, altKey: true, cancelable: true });
+      service.handleKeyDown(e);
+      expect(panesMocked.move).toHaveBeenLastCalledWith(dir);
+      expect(e.defaultPrevented).toBe(true);
+    }
+    expect(sqvMocked.moveCursor).not.toHaveBeenCalled();
   });
 
   it('CmdModal: should route control keys and let text reach the input', () => {
@@ -152,6 +233,14 @@ class MockedSequenceViewerService {
   replaceAt = vi.fn();
   deleteAt = vi.fn();
   deleteSelection = vi.fn();
+  insertAt = vi.fn();
+}
+
+class MockedPaneService {
+  readonly viewer = inject(SequenceViewerService);
+  activeViewer = vi.fn(() => this.viewer);
+  split = vi.fn();
+  move  = vi.fn();
 }
 
 class MockedCmdLineService {

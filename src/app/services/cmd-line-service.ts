@@ -4,6 +4,7 @@ import { FocusLocation } from '../types/layout_types';
 import { SequenceViewerService, SEARCH_LIMIT } from './sequence-viewer-service';
 import { LayoutService } from './layout-service';
 import { DataSessionService } from './data-session-service';
+import { PaneService } from './pane-service';
 
 export const HISTORY_LIMIT = 50;
 export const LEADER_TIMEOUT_MS = 5000;
@@ -18,9 +19,12 @@ type HistoryMode = "Command" | "Search";
   providedIn: 'root',
 })
 export class CmdLineService {
-  private readonly lyt  = inject(LayoutService);
-  private readonly sqv  = inject(SequenceViewerService);
-  private readonly data = inject(DataSessionService);
+  private readonly lyt   = inject(LayoutService);
+  private readonly data  = inject(DataSessionService);
+  private readonly panes = inject(PaneService);
+
+  /** Commands act on the viewer of the active pane. */
+  private get sqv(): SequenceViewerService { return this.panes.activeViewer(); }
 
   private readonly _mode  = signal<CmdInputType | null>(null);
   private readonly _input = signal<string>('');
@@ -185,8 +189,10 @@ export class CmdLineService {
   private readonly leaderCmds: Record<string, Command> = {
     s: () => this.lyt.toggleModal("Settings"),
     f: () => this.lyt.toggleModal("Files"),
-    q: () => this.lyt.toggleModal("Query"),
+    d: () => this.lyt.toggleModal("Query"),
     n: () => this.lyt.dismissNotification(this.lyt.activeNotifications()[0]?.id),
+    a: () => this.panes.toggleAnnotation(),
+    q: () => this.panes.remove(),
   };
 
   private readonly executeCmds: Record<string, ExCommandEntry> = {
@@ -206,15 +212,32 @@ export class CmdLineService {
     // :q! discards unsaved changes.
     q: {
       usage: "q", description: "Close the active file",
-      run: () => this._close(false),
+      run: async () => { await this._close(false); },
     },
     "q!": {
       usage: "q!", description: "Close the active file, discarding changes",
-      run: () => this._close(true),
+      run: async () => { await this._close(true); },
     },
     wq: {
       usage: "wq [path]", description: "Write, then close the active file",
       run: async (path) => { if (await this._write(path, false)) await this._close(false); },
+    },
+    // Panes: :pd keeps the file open, :pq closes it too (in the last pane only the file).
+    pd: {
+      usage: "pd", description: "Remove the active pane, keep its file open",
+      run: () => { this.panes.remove(); },
+    },
+    pq: {
+      usage: "pq", description: "Close the active file and its pane",
+      run: () => this._closePane(false),
+    },
+    "pq!": {
+      usage: "pq!", description: "Close the active file and its pane, discarding changes",
+      run: () => this._closePane(true),
+    },
+    toggleAnnotation: {
+      usage: "toggleAnnotation", description: "Show or hide the annotation overlay",
+      run: () => this.panes.toggleAnnotation(),
     },
     set: {
       usage: "set", description: "Open settings",
@@ -262,17 +285,25 @@ export class CmdLineService {
     }
   }
 
-  private async _close(force: boolean): Promise<void> {
+  /** Returns whether the file was closed. */
+  private async _close(force: boolean): Promise<boolean> {
     if (!this.sqv.activeRecord()) {
       this._report("Failure", "No open file to close");
-      return;
+      return false;
     }
     try {
       const closed = await this.sqv.close(force);
       this._report("Success", `Closed ${closed}`);
+      return true;
     } catch (err) {
       this._report("Failure", `Close failed: ${err}`);
+      return false;
     }
+  }
+
+  private async _closePane(force: boolean): Promise<void> {
+    const closed = await this._close(force);
+    if (closed && this.panes.count() > 1) this.panes.remove();
   }
 }
 

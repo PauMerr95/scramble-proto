@@ -35,3 +35,43 @@ export function defaultSettingsInfo(): SettingsInfo {
     apiKey: { available: false, source: null, updatedAt: null },
   }
 }
+
+// === NCBI queries ===
+export interface QueryPacket {
+  how:  SelectableQueryBy,
+  what: SelectableRetrieve,
+  specifier: string,
+}
+
+export const GENOME_QUERY_OPTS = [
+  "Assembly Accession",
+  "Nucleotide Accession",
+  "Assembly Name",
+  "BioProject Accession",
+  "BioSample Accession",
+  "Species Taxon",
+  "WGS Accession"
+] as const;
+export type SelectableQueryBy = typeof GENOME_QUERY_OPTS[number];
+
+export const RETRIEVE_OPTS = [
+  "Annotation Report",
+  "Annotation Data Package",
+  "Annotation Download Summary",
+  "Annotation Report Summary",
+  "Revision History",
+  "Sequence Report",
+  "Assembly Report",
+  "Data Package",
+  "Download Summary",
+  "Assembly Accession",
+  "CheckM Histogramm"
+] as const;
+export type SelectableRetrieve = typeof RETRIEVE_OPTS[number];
+
+// Which retrieve options work with which query-by option.
+export interface RetrieveRosterItem {
+  value: SelectableRetrieve,
+  compatibleWith: SelectableQueryBy[],
+}
+export type RetrieveRoster = RetrieveRosterItem[];

@@ -1,3 +1,8 @@
+:host {
+    display: block;
+    height: 100%;
+}
+
 .main-pane-wrapper {
     border-radius: 5px;
     height: 100%;
@@ -5,4 +10,34 @@
     font-family: monospace;
     white-space: pre-wrap;
     word-break: break-all;
+}
+
+/* Cells and dividers are placed in % of the grid (MainPane.cells / dividers). */
+.pane-grid {
+    position: relative;
+}
+
+.pane-cell {
+    position: absolute;
+    box-sizing: border-box;
+    padding: 2px;           /* the gap the dividers sit in */
+}
+
+.divider {
+    position: absolute;
+    z-index: 4;
+    border-radius: 2px;
+    background: transparent;
+    touch-action: none;
+}
+.divider:hover { background: var(--color-std-700, #749306); }
+.col-divider {
+    width: 6px;
+    transform: translateX(-50%);
+    cursor: col-resize;
+}
+.row-divider {
+    height: 6px;
+    transform: translateY(-50%);
+    cursor: row-resize;
 }

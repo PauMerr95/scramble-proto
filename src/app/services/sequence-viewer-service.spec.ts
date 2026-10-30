@@ -25,6 +25,7 @@ describe('SequenceViewerService', () => {
     notify = vi.fn();
     TestBed.configureTestingModule({
       providers: [
+        SequenceViewerService,          // one per pane, not root
         { provide: SequenceStoreService, useValue: store },
         { provide: LayoutService, useValue: { notify } },
       ]
@@ -131,5 +132,27 @@ describe('SequenceViewerService', () => {
     expect(seq.records().map(r => r.id)).toEqual(['r0', 'r2']);
     expect(seq.activeRecord()?.id).toBe('r2');
     await vi.waitFor(() => expect(store.getWindow).toHaveBeenLastCalledWith('r2', 0, expect.any(Number)));
+  });
+
+  it('keeps its record when a file before it closes', async () => {
+    await open('AAAA', 'CCCC', 'GGGG');
+    seq.selectRecord(1);
+    seq.jumpTo(2);
+    await data.closeFile('fr0', false);
+    TestBed.tick();
+    expect(seq.activeRecord()?.id).toBe('r1');
+    expect(seq.activeRecordIdx()).toBe(0);
+    expect(seq.cursorOffset()).toBe(2);
+  });
+
+  it('shows nothing once every file is closed, then picks up the next one', async () => {
+    await open('AAAA');
+    await seq.close();
+    TestBed.tick();
+    expect(seq.activeRecord()).toBeNull();
+    expect(seq.length()).toBe(0);
+    await data.openFasta('/data/next.fa');
+    TestBed.tick();
+    expect(seq.activeRecord()?.source).toBe('/data/next.fa');
   });
 });

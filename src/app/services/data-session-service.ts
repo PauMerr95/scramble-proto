@@ -2,7 +2,7 @@ import { inject, Injectable, signal } from '@angular/core';
 import { RecordMeta } from '../types/main_types';
 import { NCBIDataService } from './ncbi-data-service';
 import { SequenceStoreService } from './sequence-store-service';
-import { QueryPacket } from '../types/side_types';
+import { QueryPacket } from '../types/data_types';
 
 @Injectable({
   providedIn: 'root',

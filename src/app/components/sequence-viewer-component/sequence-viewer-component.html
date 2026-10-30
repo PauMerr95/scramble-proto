@@ -1,17 +1,17 @@
 <div class="viewer-shell" tabindex="0" #shell>
     <div class="toolbar">
     <span class="toolbar-title">Sequence Viewer</span>
-    @if (sqv.activeRecord()?.modified) {
+    @if (sqv().activeRecord()?.modified) {
         <span class="rec-label" title="Unsaved changes, :w to write">[+]</span>
     }
 
-    @if (sqv.records().length > 1) {
+    @if (sqv().records().length > 1) {
         <span class="record-nav">
-        <button class="rec-btn" (click)="prevRecord()" [disabled]="sqv.activeRecordIdx() === 0">&#8249;</button>
+        <button class="rec-btn" (click)="prevRecord()" [disabled]="sqv().activeRecordIdx() === 0">&#8249;</button>
         <span class="rec-label">
-            {{ sqv.activeRecordIdx() + 1 }} / {{ sqv.records().length }}
+            {{ sqv().activeRecordIdx() + 1 }} / {{ sqv().records().length }}
         </span>
-        <button class="rec-btn" (click)="nextRecord()" [disabled]="sqv.activeRecordIdx() === sqv.records().length - 1">&#8250;</button>
+        <button class="rec-btn" (click)="nextRecord()" [disabled]="sqv().activeRecordIdx() === sqv().records().length - 1">&#8250;</button>
         </span>
 
     }
@@ -26,11 +26,12 @@
     </span>
     </div>
 
-    @if (!sqv.activeRecord()) {
+    @if (!sqv().activeRecord()) {
     <div class="empty-hint">
         No sequences stored yet. Import one with <kbd>:</kbd><code>e path/to/file.fasta</code>
     </div>
     }
+    <div class="viewport-area" #area>
     <cdk-virtual-scroll-viewport
     #viewport
     [itemSize]="itemSizePx"
@@ -40,13 +41,15 @@
     class="scroll-viewport">
 
         <app-sequence-line
-            *cdkVirtualFor="let lineIdx of sqv.lineIndices(); trackBy: trackLine"
-            [line]="sqv.lineAt(lineIdx)"
+            *cdkVirtualFor="let lineIdx of sqv().lineIndices(); trackBy: trackLine"
+            [line]="sqv().lineAt(lineIdx)"
             [lineIndex]="lineIdx"
             [cursorOffset]="cursorOnLine(lineIdx)"
-            [mode]="sqv.mode()"
-            [visualSelection]="sqv.visualSelection()">
+            [mode]="sqv().mode()"
+            [visualSelection]="sqv().visualSelection()">
         </app-sequence-line>
     </cdk-virtual-scroll-viewport>
+    <ng-content></ng-content>
+    </div>
 
 </div>

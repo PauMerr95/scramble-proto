@@ -52,15 +52,29 @@ kbd {
     font-size: 10px;
 }
 
+/* The annotation overlay is projected into this area and positioned over the viewport. */
+.viewport-area {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+}
+
 .scroll-viewport {
     height: 100%;
     display: block;
-    overflow-y: auto;
+    overflow: auto;     /* 120 bases per line are wider than a narrow pane */
     padding: 4px 0;
 }
 
+app-sequence-line {
+    display: block;
+    width: max-content;
+    min-width: 100%;
+}
+
 /* Scrollbar styling */
-.scroll-viewport::-webkit-scrollbar { width: 6px; }
+.scroll-viewport::-webkit-scrollbar { width: 6px; height: 6px; }
 .scroll-viewport::-webkit-scrollbar-track { background: transparent; }
 .scroll-viewport::-webkit-scrollbar-thumb { 
     background: var(--color-std-950, #1B2201);
