@@ -1,19 +1,20 @@
 import { Component, computed, DestroyRef, ElementRef, inject, viewChild } from '@angular/core';
 import { Pane, PaneService } from '../../services/pane-service';
 import { SubPane } from '../sub-pane/sub-pane';
+import { Tabline } from '../tabline/tabline';
 import { DividerTarget } from '../../types/pane_types';
 
 /** Position and size in % of the grid. */
 interface Box { left: number; top: number; width: number; height: number; }
 
 /**
- * Lays out the SubPanes in up to two columns of up to two panes, split by draggable dividers.
+ * The tabline over the SubPanes, laid out in up to two columns of up to two panes, split by draggable dividers.
  * Panes are one flat list placed by their boxes, so removing a pane or moving a column left
  * keeps the components (and the scroll state) of the panes that stay.
  */
 @Component({
   selector: 'app-main-pane',
-  imports: [SubPane],
+  imports: [SubPane, Tabline],
   templateUrl: './main-pane.html',
   styleUrl: './main-pane.scss',
 })

@@ -4,17 +4,22 @@
 }
 
 .main-pane-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
     border-radius: 5px;
     height: 100%;
     margin-right: 0.4rem;
-    font-family: monospace;
-    white-space: pre-wrap;
-    word-break: break-all;
 }
 
 /* Cells and dividers are placed in % of the grid (MainPane.cells / dividers). */
 .pane-grid {
     position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    font-family: monospace;
+    white-space: pre-wrap;
+    word-break: break-all;
 }
 
 .pane-cell {

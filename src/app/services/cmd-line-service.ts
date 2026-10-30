@@ -29,8 +29,12 @@ export class CmdLineService {
   private readonly _mode  = signal<CmdInputType | null>(null);
   private readonly _input = signal<string>('');
 
+  // Digits typed after the leader, e.g. the 12 of <leader>12t.
+  private readonly _leaderCount = signal<string>('');
+
   readonly mode     = this._mode.asReadonly();
   readonly cmdInput = this._input.asReadonly();
+  readonly leaderCount = this._leaderCount.asReadonly();
 
   /** Ex-commands matching the typed name; once args follow, only the exact command. */
   readonly hints = computed<CmdHint[]>(() => {
@@ -56,6 +60,7 @@ export class CmdLineService {
     if (this._mode() === null) this._returnFocus = this.lyt.currentFocus();
     this._mode.set(mode);
     this._input.set('');
+    this._leaderCount.set('');
     this._historyIdx = null;
     clearTimeout(this._leaderTimeout);
     if (mode === "Leader") {
@@ -69,6 +74,7 @@ export class CmdLineService {
     clearTimeout(this._leaderTimeout);
     this._mode.set(null);
     this._input.set('');
+    this._leaderCount.set('');
     this._historyIdx = null;
     this.lyt.focusOn(this._returnFocus ?? "MainPane");
     this._returnFocus = null;
@@ -92,15 +98,42 @@ export class CmdLineService {
     }
   }
 
-  /** The key pressed after the leader. The leader has no overlay. */
+  /** A key pressed after the leader. The leader has no overlay. Digits wait for a counted key. */
   pressLeader(key: string) {
+    if (/^\d$/.test(key)) {
+      this._leaderCount.update(count => count + key);
+      return;
+    }
+    const count = this._leaderCount();
     const cmd = this.leaderCmds[key];
     this.close();
+    if (count) {
+      if (key === 't') this.openTab(Number(count));
+      else this._report("Failure", `No leader mapping for '${count}${key}'`);
+      return;
+    }
     if (!cmd) {
       this._report("Failure", `No leader mapping for '${key}'`);
       return;
     }
     cmd();
+  }
+
+  // === TABS ===
+  /** Shows tab `number` (1-based, one per record) in the active pane. */
+  openTab(number: number) {
+    const idx = number - 1;
+    if (!this.data.records()[idx]) {
+      this._report("Failure", `There is no tab ${number}`);
+      return;
+    }
+    this.sqv.selectRecord(idx);
+  }
+
+  /** The tab's close button: like :q, but for the file of tab `number`. */
+  async closeTab(number: number): Promise<void> {
+    const rec = this.data.records()[number - 1];
+    if (rec) await this._close(false, rec);
   }
 
   // === HISTORY ===
@@ -235,6 +268,13 @@ export class CmdLineService {
       usage: "pq!", description: "Close the active file and its pane, discarding changes",
       run: () => this._closePane(true),
     },
+    tab: {
+      usage: "tab <number>", description: "Show tab <number> in the active pane",
+      run: (number) => {
+        if (!/^\d+$/.test(number)) this._report("Failure", "Usage: :tab <number>");
+        else this.openTab(Number(number));
+      },
+    },
     toggleAnnotation: {
       usage: "toggleAnnotation", description: "Show or hide the annotation overlay",
       run: () => this.panes.toggleAnnotation(),
@@ -286,13 +326,13 @@ export class CmdLineService {
   }
 
   /** Returns whether the file was closed. */
-  private async _close(force: boolean): Promise<boolean> {
-    if (!this.sqv.activeRecord()) {
+  private async _close(force: boolean, rec = this.sqv.activeRecord()): Promise<boolean> {
+    if (!rec) {
       this._report("Failure", "No open file to close");
       return false;
     }
     try {
-      const closed = await this.sqv.close(force);
+      const closed = await this.sqv.close(force, rec);
       this._report("Success", `Closed ${closed}`);
       return true;
     } catch (err) {

@@ -86,9 +86,6 @@ export class SequenceViewerComponent implements AfterViewInit {
     return lineIndex;
   }
 
-  prevRecord(): void { this.sqv().selectRecord(this.sqv().activeRecordIdx() - 1); }
-  nextRecord(): void { this.sqv().selectRecord(this.sqv().activeRecordIdx() + 1); }
-
   /**
    * The CDK viewport measures its height once and then only on window resizes. Splitting,
    * removing panes and dragging dividers resize it without one, so re-measure here, or

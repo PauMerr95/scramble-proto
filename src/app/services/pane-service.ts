@@ -79,6 +79,9 @@ export class PaneService {
   readonly active: Signal<Pane> = this._active;
   readonly activeViewer = computed(() => this.active().viewer);
   readonly activeSlot   = computed(() => this.slotOf(this._activeId()));
+  /** Ids of the records shown in any pane (the tabline highlights their tabs). */
+  readonly shownRecordIds = computed(() => new Set(
+    this._columns().flat().map(pane => pane.viewer.activeRecord()?.id).filter(id => id !== undefined)));
 
   constructor() {
     this._columns.set([[this.createPane()]]);

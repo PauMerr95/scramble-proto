@@ -15,18 +15,7 @@
        the screen.
 3. [x] Deprecation of profile -> non-personal settings feature. Skill: [scramble-settings](../skills/scramble-settings/SKILL.md).
 4. [x] Window panes system (new feature) to hold the sequence viewer and an annotation overlay (new feature).
-5. [ ] Add tabline and update the header to support multiple panes fluently.
-       Sequence viewer header to be replaced with tabline that is shared for all panes. Panes will not have their own toolbar anymore.
-       - toolbar-hint stays 
-       - toolbar-title should be removed
-       - rec-label should be removed -> will be integrated into tab.
-       - record-nav should be removed -> will be replaced by tabline.
-       - Stretching from the left each record get a tab. Tabs are numbered 1 ... n.
-       - A Tab contains "{tab_number}: {the first twelve letters of the name + ...} {a colored dot if tab contains unsaved changes} {close-btn}" close button works the same as :q.
-       - Clicking a tab opens the record in the currently active pane.
-       - A record in the tabline can also be opened with '<leader>{number}t' or ':openTab(number)'
-       - The open tabs should be lightly highlighted but the tab in the active Subpane should be strongly highlighted (inverted colorscheme similar to active elements in rest of application)
-
+5. [x] Add tabline and update the header to support multiple panes fluently.
 6. [ ] Add window-feature `annot_information`, linking and displaying annotation features.
 7. [ ] Search highlighting in the sequence viewer: mark every `/` search hit, not just the cursor
        jump target. The unused `HighlightArea = {begin: number; end: number}` type (removed from

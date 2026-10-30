@@ -1,0 +1,28 @@
+<!-- mousedown would move the keyboard focus out of the viewer. -->
+<div class="tabline" (mousedown)="$event.preventDefault()">
+    <div class="tabs">
+    @for (tab of tabs(); track tab.rec.id) {
+        <div class="tab" #tab
+            [class.shown]="tab.shown"
+            [class.active]="tab.active"
+            [title]="tab.rec.header"
+            (click)="cli.openTab(tab.number)">
+            <span class="tab-label">{{ tab.number }}: {{ tab.label }}</span>
+            @if (tab.rec.modified) {
+                <span class="unsaved-dot" title="Unsaved changes, :w to write"></span>
+            }
+            <button class="tab-close" [title]="tab.closeTitle"
+                (click)="$event.stopPropagation(); cli.closeTab(tab.number)">&times;</button>
+        </div>
+    }
+    </div>
+
+    <span class="toolbar-hint">
+        <kbd>h</kbd> <kbd>j</kbd> <kbd>k</kbd> <kbd>l</kbd> move &nbsp;-&nbsp;
+        <kbd>i</kbd> insert &nbsp;-&nbsp;
+        <kbd>r</kbd> replace &nbsp;-&nbsp;
+        <kbd>v</kbd> visual &nbsp;-&nbsp;
+        <kbd>x</kbd> delete &nbsp;·&nbsp;
+        <kbd>Esc</kbd> normal
+    </span>
+</div>

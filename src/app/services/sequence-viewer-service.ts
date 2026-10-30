@@ -275,9 +275,11 @@ export class SequenceViewerService {
     return saved[0]?.source ?? null;
   }
 
-  /** Closes the active record's file. Returns its path, or null without a record. */
-  async close(force = false): Promise<string | null> {
-    const rec = this.activeRecord();
+  /**
+   * Closes the active record's file, or the file of `rec` (a tab's close button).
+   * Returns its path, or null without a record.
+   */
+  async close(force = false, rec = this.activeRecord()): Promise<string | null> {
     if (!rec) return null;
     await this.edits.settled();
     await this.data.closeFile(rec.fileId, force);

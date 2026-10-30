@@ -13,32 +13,6 @@
     outline: none;
 }
 
-.toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 6px 12px;
-    border-radius: 5px;
-    background: var(--color-std-950, #1B2201);
-    color:      var(--color-std-200, #E7FB9D);
-    border-bottom: 1px solid var(--color-std-700, #749306);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    user-select: none;
-    flex-shrink: 0;
-}
-
-.toolbar-title {
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    color:      var(--color-std-100, #f9fee7);
-}
-
-.toolbar-hint {
-    color:      var(--color-std-100, #f9fee7);
-    font-size: 10px;
-}
-
 kbd {
     display: inline-block;
     padding: 1px 4px;
@@ -83,32 +57,6 @@ app-sequence-line {
     background: var(--color-std-700, #749306);
 }
 
-.record-nav {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-.rec-label {
-    font-size: 10px;
-    color: #a6adc8;
-    min-width: 36px;
-    text-align: center;
-}
-.rec-btn {
-    background: var(--color-std-950, #1B2201);
-    border: 1px solid var(--color-std-600, #9bc408);
-    color: var(--color-std-700, #749306);
-    border-radius: 3px;
-    font-size: 14px;
-    line-height: 1;
-    padding: 0 5px 1px;
-    cursor: pointer;
-}
-.rec-btn:disabled { opacity: 0.3; cursor: default; }
-.rec-btn:not(:disabled):hover { 
-    background: var(--color-std-800, #4e6204);
-    color:      var(--color-std-100, #f3fdce);
-}
 .empty-hint {
     padding: 16px;
     font-size: 12px;

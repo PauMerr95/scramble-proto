@@ -208,6 +208,52 @@ describe('CmdLineService', () => {
     expect(service.cmdInput()).toBe('ACGT');
   });
 
+  it(':tab and <leader>{number}t show a tab in the active pane', async () => {
+    await run('e /data/a.fa');
+    await run('e /data/b.fa');
+    expect(panes.activeViewer().activeRecordIdx()).toBe(1);
+
+    await run('tab 1');
+    expect(panes.activeViewer().activeRecordIdx()).toBe(0);
+    await run('tab 3');
+    expect(lastNotification()).toEqual({ kind: 'Error', message: 'There is no tab 3' });
+    await run('tab x');
+    expect(lastNotification()).toEqual({ kind: 'Error', message: 'Usage: :tab <number>' });
+
+    service.open('Leader');
+    service.pressLeader('2');
+    expect(service.mode()).toBe('Leader');
+    expect(service.leaderCount()).toBe('2');
+    service.pressLeader('t');
+    expect(service.mode()).toBe(null);
+    expect(service.leaderCount()).toBe('');
+    expect(panes.activeViewer().activeRecordIdx()).toBe(1);
+
+    service.open('Leader');
+    service.pressLeader('1');
+    service.pressLeader('2');
+    service.pressLeader('t');
+    expect(lastNotification()).toEqual({ kind: 'Error', message: 'There is no tab 12' });
+    service.open('Leader');
+    service.pressLeader('1');
+    service.pressLeader('a');
+    expect(lastNotification()).toEqual({ kind: 'Error', message: "No leader mapping for '1a'" });
+  });
+
+  it('closeTab closes the file of that tab like :q, not the active one', async () => {
+    await run('e /data/a.fa');
+    await run('e /data/b.fa');
+    await store.applyEdits(data.records()[0].id, [{ kind: 'insert', offset: 0, bases: 'A' }]);
+
+    await service.closeTab(1);
+    expect(lastNotification().message).toContain('unsaved changes');
+    expect(data.records().length).toBe(2);
+
+    await service.closeTab(2);
+    expect(lastNotification()).toEqual({ kind: 'Success', message: 'Closed /data/b.fa' });
+    expect(data.records().map(rec => rec.source)).toEqual(['/data/a.fa']);
+  });
+
   it('leader runs a mapped key, reports an unmapped one and times out', () => {
     const toggle = vi.spyOn(lyt, 'toggleModal').mockImplementation(() => {});
     service.open('Leader');

@@ -6,7 +6,7 @@
     <span class="pane-badge" title="Active pane">{{ panes.activeSlot() }}</span>
 
     @if (cli.mode() === "Leader") {
-    <span class="leader-badge">&lt;leader&gt;</span>
+    <span class="leader-badge">&lt;leader&gt;{{ cli.leaderCount() }}</span>
     }
 
     <span class="header-label" [title]="svc.header()">

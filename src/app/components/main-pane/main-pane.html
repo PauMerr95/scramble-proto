@@ -1,4 +1,6 @@
-<div class="main-pane-wrapper pane-grid" #grid>
+<div class="main-pane-wrapper">
+<app-tabline></app-tabline>
+<div class="pane-grid" #grid>
     @for (cell of cells(); track cell.pane.id) {
         <div class="pane-cell"
             [style.left.%]="cell.box.left" [style.top.%]="cell.box.top"
@@ -14,4 +16,5 @@
             [style.width.%]="divider.box.width" [style.height.%]="divider.box.height"
             (pointerdown)="startDrag(divider.target, $event)"></div>
     }
+</div>
 </div>

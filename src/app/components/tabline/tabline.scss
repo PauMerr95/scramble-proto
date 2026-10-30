@@ -1,0 +1,104 @@
+:host {
+    display: block;
+    container-type: inline-size;
+}
+
+.tabline {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 6px;
+    border-radius: 5px;
+    background: var(--color-std-950, #1B2201);
+    color:      var(--color-std-200, #E7FB9D);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    user-select: none;
+}
+
+/* Tabs stretch from the left and scroll once they don't fit. */
+.tabs {
+    display: flex;
+    gap: 4px;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: thin;
+}
+.tabs::-webkit-scrollbar { height: 3px; }
+.tabs::-webkit-scrollbar-thumb {
+    background: var(--color-std-700, #749306);
+    border-radius: 2px;
+}
+
+.tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    padding: 2px 4px 2px 8px;
+    border-radius: 3px;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.tab:hover {
+    background: var(--color-std-900, #374503);
+}
+/* Shown in a pane. */
+.tab.shown {
+    background: var(--color-std-800, #4e6204);
+    color:      var(--color-std-100, #f3fdce);
+}
+/* Shown in the active pane: inverted, like the active navbar icon. */
+.tab.active {
+    background: var(--color-std-500, #C2F50A);
+    color:      var(--color-std-1000, #090f0a);
+    font-weight: 600;
+}
+
+.unsaved-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #FF9999;
+}
+
+.tab-close {
+    padding: 0 4px;
+    border: none;
+    border-radius: 3px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    line-height: 1;
+    opacity: 0.6;
+    cursor: pointer;
+}
+.tab-close:hover {
+    opacity: 1;
+    background: var(--color-std-700, #749306);
+    color:      var(--color-std-50, #F9FEE7);
+}
+
+.toolbar-hint {
+    flex-shrink: 0;
+    padding-right: 6px;
+    color:      var(--color-std-100, #f9fee7);
+    font-size: 10px;
+}
+@container (max-width: 720px) {
+    .toolbar-hint { display: none; }
+}
+
+kbd {
+    display: inline-block;
+    padding: 1px 4px;
+
+    background: var(--color-std-800, #4e6204);
+    border: 1px solid var(--color-std-600, #9bc408);
+    color:      var(--color-std-100, #f3fdce);
+
+    border-radius: 3px;
+    font-family: inherit;
+    font-size: 10px;
+}
