@@ -18,8 +18,10 @@ struct Ipc {
 
 impl Ipc {
   fn new(work_dir: std::path::PathBuf) -> Ipc {
+    let config_path = work_dir.with_file_name(".config.toml");
+    let settings = data::load_config(&config_path, work_dir.with_file_name("work")).unwrap();
     let store = Arc::new(SeqStore::new(work_dir).unwrap());
-    let app = with_commands(mock_builder(), data::UserInfo::new(), store)
+    let app = with_commands(mock_builder(), settings, config_path, store)
       .build(mock_context(noop_assets()))
       .unwrap();
     let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default()).build().unwrap();
@@ -86,4 +88,38 @@ fn session_is_restored_by_a_new_app_instance() {
   let saved = second.invoke("save_file", json!({ "fileId": listed[0]["fileId"], "path": save_as, "force": false })).unwrap();
   assert_eq!(saved[0]["source"], save_as.to_str().unwrap());
   assert_eq!(fs::read_to_string(save_as).unwrap(), ">x\nACGT\n");
+}
+
+// Mirrors the calls made by the settings modal (src/app/services/settings-service.ts).
+#[test]
+fn settings_save_and_api_key_over_ipc() {
+  let dir = tempfile::tempdir().unwrap();
+  let ipc = Ipc::new(dir.path().join("tmp"));
+  let config_path = dir.path().join(".config.toml");
+
+  let info = ipc.invoke("get_settings", json!({})).unwrap();
+  assert_eq!(info["configPath"], config_path.to_str().unwrap());
+  assert_eq!(info["workDir"], dir.path().join("work").to_str().unwrap());
+
+  let work_dir = dir.path().join("files").join("nested");
+  let draft = json!({ "theme": "Ocean", "workDir": work_dir, "lastSessionPath": null });
+  let saved = ipc.invoke("save_settings", json!({ "draft": draft })).unwrap();
+  assert_eq!((saved["theme"].clone(), saved["workDir"].clone()), (json!("Ocean"), json!(work_dir)));
+  assert!(work_dir.is_dir());
+  assert!(fs::read_to_string(&config_path).unwrap().contains("Ocean"));
+
+  let err = ipc.invoke("save_settings", json!({ "draft": { "theme": "Doom", "workDir": "relative", "lastSessionPath": null } }));
+  assert!(err.unwrap_err().as_str().unwrap().contains("absolute"));
+  assert_eq!(ipc.invoke("get_settings", json!({})).unwrap()["theme"], "Ocean");
+
+  let status = ipc.invoke("set_api_key", json!({ "key": "secret-key" })).unwrap();
+  assert_eq!((status["available"].clone(), status["source"].clone()), (json!(true), json!("Config")));
+  assert!(status["updatedAt"].is_string());
+  assert!(!ipc.invoke("get_settings", json!({})).unwrap().to_string().contains("secret-key"));
+  assert!(fs::read_to_string(&config_path).unwrap().contains("secret-key"));
+
+  // NCBI_API_KEY may be set on the test machine, so only the config source is checked.
+  let status = ipc.invoke("clear_api_key", json!({})).unwrap();
+  assert_ne!(status["source"], "Config");
+  assert!(!fs::read_to_string(&config_path).unwrap().contains("secret-key"));
 }

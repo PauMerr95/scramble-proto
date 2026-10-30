@@ -6,7 +6,8 @@ use app_lib::user::data::{self, load_config};
 
 #[tokio::main]
 async fn main() {
-  let _config_path = data::default_config_path(data::retrieve_os()).unwrap();
-  let user = load_config(_config_path);
-  app_lib::run(user.unwrap());
+  let config_path = data::default_config_path(data::retrieve_os()).unwrap();
+  let work_dir = data::default_work_dir(data::retrieve_os()).unwrap();
+  let settings = load_config(&config_path, work_dir).unwrap();
+  app_lib::run(settings, config_path);
 }

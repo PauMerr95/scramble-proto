@@ -1,17 +1,16 @@
-use crate::user::data::{self, OS, default_config_path };
+use crate::user::data;
 use crate::seq::store::{self, FlushPolicy, SeqStore};
 use std::sync::{Arc, Mutex};
-use chrono::Utc;
 
 pub mod seq;
 pub mod user;
 
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run(user: data::UserInfo) {
+pub fn run(settings: data::Settings, config_path: std::path::PathBuf) {
   // Working copies of opened files; they stay until the file is closed (see seq::workspace).
-  let work_dir = data::default_data_dir(data::retrieve_os()).unwrap().join("tmp");
-  let seq_store = Arc::new(SeqStore::new(work_dir).expect("could not create sequence working directory"));
+  let store_dir = data::default_data_dir(data::retrieve_os()).unwrap().join("tmp");
+  let seq_store = Arc::new(SeqStore::new(store_dir).expect("could not create sequence working directory"));
   store::spawn_flusher(seq_store.clone(), FlushPolicy::default());
 
   let builder = tauri::Builder::default()
@@ -25,7 +24,7 @@ pub fn run(user: data::UserInfo) {
       }
       Ok(())
     });
-  let app = with_commands(builder, user, seq_store.clone())
+  let app = with_commands(builder, settings, config_path, seq_store.clone())
     .build(tauri::generate_context!())
     .expect("error while building tauri application");
 
@@ -39,14 +38,16 @@ pub fn run(user: data::UserInfo) {
 
 /// Managed state and every `invoke` command. Generic over the runtime so the IPC tests can run
 /// the same handlers on tauri's mock runtime.
-pub fn with_commands<R: tauri::Runtime>(builder: tauri::Builder<R>, user: data::UserInfo, seq_store: Arc<SeqStore>) -> tauri::Builder<R> {
+pub fn with_commands<R: tauri::Runtime>(builder: tauri::Builder<R>, settings: data::Settings, config_path: std::path::PathBuf,
+                                         seq_store: Arc<SeqStore>) -> tauri::Builder<R> {
   builder
-    .manage(data::UserState { data: Mutex::new(user)})
+    .manage(data::SettingsState { data: Mutex::new(settings), config_path })
     .manage(seq_store)
     .invoke_handler(tauri::generate_handler![
-        get_user_info,
-        get_config_path,
-        save_user_info,
+        get_settings,
+        save_settings,
+        set_api_key,
+        clear_api_key,
         seq::commands::open_fasta,
         seq::commands::save_file,
         seq::commands::close_file,
@@ -57,23 +58,40 @@ pub fn with_commands<R: tauri::Runtime>(builder: tauri::Builder<R>, user: data::
 }
 
 #[tauri::command]
-fn get_user_info(user_state: tauri::State<data::UserState>) -> data::UserInfo {
-  let user = user_state.data.lock().unwrap().clone();
-  user
+fn get_settings(state: tauri::State<data::SettingsState>) -> data::SettingsInfo {
+  state.data.lock().unwrap().info(&state.config_path)
 }
 
+/// Applies the draft (theme, work folder) and persists it. The work folder is created if missing.
 #[tauri::command]
-fn get_config_path() -> String {
-  let os: OS = user::data::retrieve_os();
-  default_config_path(os).unwrap().to_string_lossy().into_owned()
+fn save_settings(state: tauri::State<data::SettingsState>, draft: data::SettingsDraft) -> Result<data::SettingsInfo, String> {
+  let mut settings = state.data.lock().unwrap();
+  let next = settings.with_draft(draft)?;
+  std::fs::create_dir_all(&next.work_dir)
+    .map_err(|e| format!("Could not create work folder {}: {}", next.work_dir.display(), e))?;
+  data::save_to_file(&next, &state.config_path)?;
+  *settings = next;
+  Ok(settings.info(&state.config_path))
 }
 
+/// Stores the key and persists it right away. The key itself is never sent back.
 #[tauri::command]
-fn save_user_info(user_state: tauri::State<data::UserState>, mut user_data: data::UserInfo, config_path: String) -> Result<data::UserInfo, String> {
-  user_data.updated_at = Utc::now();
-  let mut user_backend = user_state.data.lock().unwrap();
-  *user_backend = user_data.clone();
-  user::data::save_to_file(&user_data, &config_path)?;
-  Ok(user_data)
+fn set_api_key(state: tauri::State<data::SettingsState>, key: String) -> Result<data::ApiKeyStatus, String> {
+  let mut settings = state.data.lock().unwrap();
+  let mut next = settings.clone();
+  next.set_api_key(&key)?;
+  data::save_to_file(&next, &state.config_path)?;
+  *settings = next;
+  Ok(settings.api_key_status())
 }
 
+/// Removes the configured key; `NCBI_API_KEY` may still make one available.
+#[tauri::command]
+fn clear_api_key(state: tauri::State<data::SettingsState>) -> Result<data::ApiKeyStatus, String> {
+  let mut settings = state.data.lock().unwrap();
+  let mut next = settings.clone();
+  next.clear_api_key();
+  data::save_to_file(&next, &state.config_path)?;
+  *settings = next;
+  Ok(settings.api_key_status())
+}

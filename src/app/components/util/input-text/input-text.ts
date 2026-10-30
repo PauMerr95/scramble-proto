@@ -1,6 +1,6 @@
 import { Component, input, effect, signal, inject, computed,
          ViewChild, viewChild, ElementRef, Output } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { outputFromObservable, toSignal } from '@angular/core/rxjs-interop';
 import { ScrollingModule, CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 import { DropDownItem } from '../drop-down/drop-down-item/drop-down-item';
 import { InputID } from '../../../types/util_types';
@@ -15,7 +15,7 @@ import { debounceTime, distinctUntilChanged  } from 'rxjs';
   imports: [ScrollingModule, DropDownItem, ReactiveFormsModule],
   template: `
   <div class="input-wrapper">
-      <input #input type="text"
+      <input #input [type]="type()" autocomplete="off"
       [formControl]="inputValueControl"
       [class.targeted]="this.lyt.currentlyTargeted() === this.id()"/>
 
@@ -116,6 +116,11 @@ export class InputText {
   inputValueControl = new FormControl<string | null>(null);
 
   readonly id = input.required<InputID>();
+  // "password" masks the value (API key).
+  readonly type         = input<'text' | 'password'>('text');
+  readonly initialValue = input<string | null>(null);
+  // Every change, undebounced (unlike `value`), for callers that keep the value in a signal.
+  readonly valueChange  = outputFromObservable(this.inputValueControl.valueChanges);
   readonly value = toSignal(
     this.inputValueControl.valueChanges.pipe(
       debounceTime(300),
@@ -157,6 +162,10 @@ export class InputText {
     });
   }
 
+  ngOnInit() {
+    if (this.initialValue() !== null) this.inputValueControl.setValue(this.initialValue());
+  }
+
   ngAfterViewInit() {
     const recs = this.recommendations();
     this._recommendationTree = this.buildRecommendationTree(recs);
@@ -180,6 +189,10 @@ export class InputText {
     if (q && q.length > 2)
       return this._recommendationTree.filter(rec => rec.startsWith(q) && rec !== q);
     return [];
+  }
+
+  clear() {
+    this.inputValueControl.setValue(null);
   }
 
   chooseRec(idx: number){

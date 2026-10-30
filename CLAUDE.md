@@ -14,6 +14,7 @@ Domain skills (load the matching one before working in that area):
 - `.claude/skills/scramble-backend`: Rust/Tauri commands, the on-disk sequence store, batched background flushing, and the future codon + DataFusion layers.
 - `.claude/skills/scramble-frontend`: Angular signals, the windowed CDK virtual-scroll viewer, the vim-style motion system.
 - `.claude/skills/ncbi-datasets`: pulling large data from NCBI Datasets v2 into the store.
+- `.claude/skills/scramble-settings`: installation-wide settings (config file, write-only API key, Settings modal).
 
 ## Commands
 
@@ -40,9 +41,9 @@ There is no ESLint config. Inside the app, `:e <path>` opens a FASTA/FNA file as
 
 ## Architecture
 
-**Process split.** The Angular frontend runs in the Tauri webview and reaches Rust only through `invoke('<command>', {camelCaseArgs})`. Commands and managed state are registered in `with_commands` in `src-tauri/src/lib.rs` (generic over the runtime, so `src-tauri/tests/ipc.rs` runs the same handlers). Sequence commands live in `src-tauri/src/seq/commands.rs`, are `async`, and do their disk work in `spawn_blocking`. Shared state is `.manage(...)`'d: `UserState` (Mutex) and `Arc<SeqStore>`. On `RunEvent::Exit` the app flushes every pending edit.
+**Process split.** The Angular frontend runs in the Tauri webview and reaches Rust only through `invoke('<command>', {camelCaseArgs})`. Commands and managed state are registered in `with_commands` in `src-tauri/src/lib.rs` (generic over the runtime, so `src-tauri/tests/ipc.rs` runs the same handlers). Sequence commands live in `src-tauri/src/seq/commands.rs`, are `async`, and do their disk work in `spawn_blocking`. Shared state is `.manage(...)`'d: `SettingsState` (Mutex + the backend-owned config path) and `Arc<SeqStore>`. On `RunEvent::Exit` the app flushes every pending edit.
 
-**IPC contract.** Every struct crossing IPC is `#[serde(rename_all = "camelCase")]` and mirrors a TS type. Tauri renames only command *argument names*, not fields. Each pair names the other in a comment: `UserInfo` ↔ `types/data_types.ts`, `Theme`/`Avatar` ↔ `layout_types.ts`/`side_types.ts`, `RecordMeta`/`EditOp`/`IUPAC` ↔ `types/main_types.ts`. Rust tests pin the JSON shape. Change both sides together.
+**IPC contract.** Every struct crossing IPC is `#[serde(rename_all = "camelCase")]` and mirrors a TS type. Tauri renames only command *argument names*, not fields. Each pair names the other in a comment: `SettingsInfo`/`ApiKeyStatus`/`SettingsDraft` ↔ `types/data_types.ts`, `Theme` ↔ `layout_types.ts`, `RecordMeta`/`EditOp`/`IUPAC` ↔ `types/main_types.ts`. Rust tests pin the JSON shape. Change both sides together.
 
 **Sequence data flow.** Sequences live **on disk**, never as a whole in the webview:
 1. `:e path` → `open_fasta` streams the file into the working directory `<data dir>/tmp`, one canonical FASTA per record (`<id>.fa`, 60 bases/line, so base offsets map arithmetically to bytes) plus `<id>.json` metadata and a `<file id>.file.json` manifest (source path, size/mtime stamp, record order). Non-IUPAC input is rejected and the import rolls back. Re-opening an open path returns its records.
@@ -52,7 +53,7 @@ There is no ESLint config. Inside the app, `:e <path>` opens a FASTA/FNA file as
 5. A background thread (`spawn_flusher`, `FlushPolicy`: 2 s idle or 1000 pending ops) streams the snapshot to `<id>.fa.tmp` without holding the view lock, then swaps the file in and replays any ops that raced the write. This only persists the working copy.
 6. `:w` → `save_file` streams every record of the file as FASTA (60/line, `;` comments) to `<target>.scramble.tmp` and renames it over the source. It refuses a source whose stamp changed, or an existing save-as target, unless forced. `:q` → `close_file` deletes the working copies; it refuses while a record is `modified` unless forced. Working copies survive restarts (session restore) and startup sweeps `*.tmp` and orphaned records.
 
-**Frontend state** lives in `providedIn: 'root'` signal services. Components are thin. `UserDataService` and `DataSessionService` (record metadata, open/save/close of files) are initialised in `provideAppInitializer`. `SequenceStoreService` wraps the sequence `invoke`s. `SequenceViewerService` handles the active record, window cache, cursor/mode, the edit queue, and search hits. `MotionService` routes every `keydown` by `LayoutService.currentFocus()`. `CmdLineService` handles `/` search, `:` ex-commands with args, and the space leader.
+**Frontend state** lives in `providedIn: 'root'` signal services. Components are thin. `SettingsService` (installation-wide settings: a Save-able draft for theme/work folder, a write-only API key) and `DataSessionService` (record metadata, open/save/close of files) are initialised in `provideAppInitializer`. `SequenceStoreService` wraps the sequence `invoke`s. `SequenceViewerService` handles the active record, window cache, cursor/mode, the edit queue, and search hits. `MotionService` routes every `keydown` by `LayoutService.currentFocus()`. `CmdLineService` handles `/` search, `:` ex-commands with args, and the space leader.
 
 **NCBI.** `NCBIDataService.createUrl` builds `datasets/v2/genome/<how>/<specifier>/<what>` URLs from a `QueryPacket`. No request is made yet. Real I/O belongs in Rust (see the skill).
 

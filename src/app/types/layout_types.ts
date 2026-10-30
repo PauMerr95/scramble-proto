@@ -6,15 +6,18 @@ import { dropDownIDs } from "./util_types";
 export const themes = ["DarkLime", "Ocean", "Catpuccin", "Material", "Swagger", "LightBlue", "LightRed", "LightGreen", "Scramble", "HolyLight", "Vampire", "Doom", "Vanilla", "Tropical"] as const;
 export type Theme = typeof themes[number];
 
-export const navbarLocations = ["Profile", "Files", "Query"] as const;
+export const navbarLocations = ["Settings", "Files", "Query"] as const;
 export type NavbarLocation = typeof navbarLocations[number];
 
-// Navbar panels open as modals; the rest are opened from inside another modal.
-export const modalTitles = [ ...navbarLocations, "AvatarMenu" ] as const;
+// Navbar panels open as modals; sub-modals opened from inside another modal go here too.
+export const modalTitles = [ ...navbarLocations ] as const;
 export type ModalTitle = typeof modalTitles[number];
 
 export const focusLocations = ["MainPane", "Navbar", "CmdModal", "Modal", "InputElement"] as const;
 export type FocusLocation = typeof focusLocations[number];
+
+export const settingsSections = ["Scramble", "Appearance", "NCBI"] as const;
+export type SettingsSection = typeof settingsSections[number];
 
 export const queryPages = ["Genome", "Gene", "Prokaryot", "Virus", "Organelle", "QueryMain"] as const;
 export type QueryPage = typeof queryPages[number];
@@ -34,10 +37,9 @@ export interface ModalObject {
 }
 
 export const modals: Record<ModalTitle, ModalObject> = {
-    Profile:    { header: "Profile",       route: "modal/profile" },
+    Settings:   { header: "Settings",      route: "modal/settings" },
     Files:      { header: "Files",         route: "modal/files" },
     Query:      { header: "NCBI Query",    route: "modal/query" },
-    AvatarMenu: { header: "Choose Avatar", route: "modal/avatars" },
 };
 
 export const gridInjectors = [

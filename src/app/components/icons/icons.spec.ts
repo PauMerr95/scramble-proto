@@ -1,14 +1,20 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Type } from '@angular/core';
 
-import { IconProfile } from '../icons/profile';
+import { IconSettings } from './icon-settings';
+import { IconScrambleSettings } from './icon-scramble-settings';
+import { IconAppearanceSettings } from './icon-appearance-settings';
+import { IconNcbiSettings } from './icon-ncbi-settings';
 import { IconFolder } from '../icons/folder';
 import { IconSearchDB } from '../icons/db_search';
 import { IconCommand } from './command';
 import { IconSearch } from './search';
 
 const ICON_COMPONENTS: Type<unknown>[] = [
-    IconProfile,
+    IconSettings,
+    IconScrambleSettings,
+    IconAppearanceSettings,
+    IconNcbiSettings,
     IconFolder,
     IconSearchDB,
     IconCommand,

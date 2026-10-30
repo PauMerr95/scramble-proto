@@ -11,7 +11,7 @@ Docs: https://www.ncbi.nlm.nih.gov/datasets/docs/v2/api/rest-api/. The OpenAPI s
 
 **All NCBI I/O lives in Rust** (`reqwest` with `stream` feature + `tokio`), not the Angular `HttpClient` that Scramble sketched. Reasons:
 - Responses can be GBs. They must stream to disk, never through the webview or JSON IPC.
-- The API key stays in the backend (`UserInfo.api_key`, default from the `NCBI_API_KEY` env var).
+- The API key stays in the backend (`Settings::api_key()`: the configured key, else the `NCBI_API_KEY` env var). The frontend only ever sees its `ApiKeyStatus`.
 - Rate limiting and retries need one shared place.
 
 The frontend keeps building the *query* (`QueryPacket { how, what, specifier }` → path segments; see `src/app/services/ncbi-data-service.ts` for the label → path maps). It sends the packet to a command such as `ncbi_fetch(packet, onProgress: Channel<Progress>)` and gets back a job id or result metadata.

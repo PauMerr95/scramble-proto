@@ -7,12 +7,12 @@ export const buttonIDs = [
     // === Query Buttons ===
     "RetrieveGenomeBtn", "RetrieveGeneBtn", "RetrieveProkaryotBtn",
     "RetrieveVirusBtn", "RetrieveOrganelleBtn",
-    // === Profile Buttons ===
-    "ProfileBtnSave"
+    // === Settings Buttons ===
+    "SettingsBtnSave", "SettingsBtnSetKey", "SettingsBtnClearKey"
 ] as const;
 export const dropDownIDs = [
-    // === Profile DDs ===
-    "ProfileDDThemes",
+    // === Settings DDs ===
+    "SettingsDDThemes",
     // === Query DDs ===
     "QueryDDGenomeOption1",
     "QueryDDGenomeOption2"
@@ -20,7 +20,9 @@ export const dropDownIDs = [
 
 export const inputIDs = [
   // === Query Inputs ===
-  "QueryInputGenome"
+  "QueryInputGenome",
+  // === Settings Inputs ===
+  "SettingsInputWorkDir", "SettingsInputApiKey"
 ] as const;
 
 export type ButtonID = typeof buttonIDs[number];

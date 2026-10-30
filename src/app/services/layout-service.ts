@@ -1,13 +1,11 @@
-import { Injectable, signal, inject, computed } from '@angular/core';
+import { Injectable, signal, inject, computed, untracked } from '@angular/core';
 import { NavbarLocation, FocusLocation, QueryPage,
          NotificationObject, ActiveNotification, ModalTitle, modals,
          GridInjector, GridInjection, GridInjectorTracker } from '../types/layout_types';
 import { MoveGrid, SelectableLocation } from '../types/side_types';
 import { CursorPos } from '../types/main_types';
 import { Router } from '@angular/router';
-import { Avatar } from '../types/side_types';
-import { Theme } from '../types/layout_types';
-import { UserDataService } from './user-data';
+import { SettingsService } from './settings-service';
 import { ButtonID, DropDownID, InputID } from '../types/util_types';
 
 @Injectable({
@@ -15,15 +13,12 @@ import { ButtonID, DropDownID, InputID } from '../types/util_types';
 })
 export class LayoutService {
   // === Injection ===
-  readonly user = inject(UserDataService);
+  private readonly settings = inject(SettingsService);
   private readonly _router = inject(Router);
 
   // === States ===
   private _queryPage     = signal<QueryPage>("QueryMain");
   private _currentFocus  = signal<FocusLocation | null>(null);
-  readonly activeAvatar  = computed(() => {
-    return this.user.data().avatar as Avatar;
-  });
   // === Events ===
   readonly activeBtn   = signal<ButtonID | null>(null);
   readonly activeDD    = signal<DropDownID | null>(null);
@@ -37,6 +32,12 @@ export class LayoutService {
     validInjection: null,
     injections: new Map<GridInjector, GridInjection>(),
   };
+  // Layered grid (see loadLayeredGrid); kept apart so a sub-grid swap is a rebuild, not a splice.
+  private _baseGrid: MoveGrid | null = null;
+  private _subGrid:  MoveGrid | null = null;
+  private _subAnchor: SelectableLocation | null = null;
+  // Set by the first attempt to leave Settings with unsaved changes.
+  private _discardArmed = false;
 
 
   //INFO: for testing purposes
@@ -56,7 +57,6 @@ export class LayoutService {
   // === Exports ===
   readonly currentFocus = this._currentFocus.asReadonly();
   readonly queryPage = this._queryPage.asReadonly();
-  readonly currentTheme = signal<Theme>("DarkLime");
 
   // === PRIVATE METHODS ===
   private _fastEject(injector: GridInjector) {
@@ -115,37 +115,56 @@ export class LayoutService {
     this.activeNotifications.update(active => [...active, ...add]);
   }
 
+  /** Clamps pos into the grid and recomputes its offset. Always returns a new object, so
+   *  readers of `currentlyTargeted()` (effects included) see every move. */
   private _correctRowCol(grid: MoveGrid = this._currentMoveGrid()!,
                          pos: CursorPos = this._selector()!): CursorPos{
-    // TODO: Check logic and and calls to this function. Does not work and will return positions for undefined targets
+    const row = Math.min(Math.max(pos.row, 0), grid.length - 1);
+    const col = Math.min(Math.max(pos.col, 0), grid[row].length - 1);
+    let offset = col;
+    for (let i = 0; i < row; i++) offset += grid[i].length;
+    return { row: row, col: col, offset: offset };
+  }
 
-    // Rows
-    let row = pos.row;
-    const MAXROW = grid.length - 1;
-    let recalcOffset = false;
-    if (row > MAXROW) {
-      recalcOffset = true;
-      row = MAXROW;
+  private _moveTo(row: number, col: number) {
+    this._selector.set(this._correctRowCol(this._currentMoveGrid()!, { row: row, col: col, offset: 0 }));
+    console.log(`Row: ${this._selector()!.row}, Col: ${this._selector()!.col}, Offset: ${this._selector()!.offset}, Target: ${String(this.currentlyTargeted())}`);
+  }
+
+  // Row i of the merged grid is base row i followed by sub row i (sub rows past the base stand alone).
+  private _mergeLayers(): MoveGrid {
+    const base = this._baseGrid ?? [];
+    const sub  = this._subGrid ?? [];
+    return Array.from({ length: Math.max(base.length, sub.length) },
+                      (_, i) => [...(base[i] ?? []), ...(sub[i] ?? [])]);
+  }
+  // null when no layered grid is loaded, or while a drop down is open: its injected rows shift
+  // the row indices against the base grid, so plain movement applies until it closes.
+  private _layerAt(row: number, col: number): "Base" | "Sub" | null {
+    if (this._baseGrid === null || this._gridTracker.injections.size > 0) return null;
+    return (col < (this._baseGrid[row]?.length ?? 0)) ? "Base" : "Sub";
+  }
+  private _layerHasRow(layer: "Base" | "Sub" | null, row: number): boolean {
+    if (layer === null) return true;
+    const grid = this._currentMoveGrid()!;
+    const baseLen = this._baseGrid![row]?.length ?? 0;
+    return (layer === "Base") ? baseLen > 0 : (grid[row]?.length ?? 0) > baseLen;
+  }
+
+  /** Leaving Settings with unsaved changes takes a second try, which discards them (:q / :q!). */
+  private _mayLeaveSettings(): boolean {
+    if (this.activeModal() !== "Settings" || !this.settings.dirty()) {
+      this._discardArmed = false;
+      return true;
     }
-    // Columns
-    let col = pos.col;
-    const MAXCOL = grid[row].length;
-    if (col > MAXCOL) {
-      recalcOffset = true;
-      row = MAXCOL;
+    if (this._discardArmed) {
+      this._discardArmed = false;
+      this.settings.revert();
+      return true;
     }
-    col = Math.min(col, MAXCOL);
-    // Offset
-    if (recalcOffset) {
-      let offset = col;
-      for (let i = 0; i<row; i++) offset += grid[i].length;
-      return {
-        row: row,
-        col: col,
-        offset: offset,
-      }
-    }
-    return pos;
+    this._discardArmed = true;
+    this.notify({ kind: "Warn", message: "Unsaved settings. Esc again to discard, or Save" });
+    return false;
   }
 
   // === PUBLIC METHODS ===
@@ -158,16 +177,23 @@ export class LayoutService {
     this._currentFocus.set(foc);
   }
 
+  // Untracked: panels call this from effects, and reading the selector it writes would
+  // re-run them on every move.
   loadGrid(grid: MoveGrid){
-    if (!this._selector()) {
-      this._selector.set({row: 0, col: 0, offset: 0});
-    }
-    this._currentMoveGrid.set(grid);
-    this._selector.update(pos => this._correctRowCol(grid, pos!));
+    untracked(() => {
+      if (!this._selector()) {
+        this._selector.set({row: 0, col: 0, offset: 0});
+      }
+      this._currentMoveGrid.set(grid);
+      this._selector.update(pos => this._correctRowCol(grid, pos!));
+    });
   }
   unloadGrid() {
     this._selector.set(null);
     this._currentMoveGrid.set(null);
+    this._baseGrid  = null;
+    this._subGrid   = null;
+    this._subAnchor = null;
     this._gridTracker.validInjection = null;
     this._gridTracker.injections.clear();
   }
@@ -180,42 +206,58 @@ export class LayoutService {
     this.unloadGrid();
   }
 
+  /** A fixed base grid with a swappable sub-grid to its right (settings sections).
+   *  `anchor` is the base cell the sub-grid belongs to; h leads back to it. */
+  loadLayeredGrid(base: MoveGrid, sub: MoveGrid | null = null, anchor: SelectableLocation | null = null) {
+    this._baseGrid  = base;
+    this._subGrid   = sub;
+    this._subAnchor = anchor;
+    this._gridTracker.validInjection = null;
+    this._gridTracker.injections.clear();
+    this.loadGrid(this._mergeLayers());
+  }
+  /** Swaps the sub-grid (null ejects it). Drop down injections go with the old one. */
+  setSubGrid(sub: MoveGrid | null, anchor: SelectableLocation | null = null) {
+    if (this._baseGrid === null) return;
+    this.loadLayeredGrid(this._baseGrid, sub, anchor);
+  }
+  // In a layered grid j/k stay inside their layer, l from the base enters the sub-grid at its
+  // top and h from the sub-grid's first column returns to its anchor. Rows only line up by
+  // index, so crossing anywhere else would land on an unrelated base cell.
   moveDown() {
     if (!this._currentMoveGrid() || !this._selector()) return;
-    if (this._selector()!.row >= this._currentMoveGrid()!.length - 1) return;
-    const row = this._selector()!.row;
-    const col = this._selector()!.col;
-    let moves = this._currentMoveGrid()![row!].length - col!;
-    this._selector()!.row++;
-    this._selector.update(pos => this._correctRowCol(this._currentMoveGrid()!, pos!));
-    moves += this._selector()!.col;
-    this._selector()!.offset += moves;
-    console.log(`Row: ${this._selector()!.row}, Col: ${this._selector()!.col},  Offset: ${this._selector()!.offset}, Target: ${String(this.currentlyTargeted())}`);
+    const { row, col } = this._selector()!;
+    if (row >= this._currentMoveGrid()!.length - 1) return;
+    if (!this._layerHasRow(this._layerAt(row, col), row + 1)) return;
+    this._moveTo(row + 1, col);
   }
   moveUp() {
     if (!this._currentMoveGrid() || !this._selector()) return;
-    if (this._selector()!.row <= 0) return;
-    let moves = this._selector()!.col;
-    this._selector()!.row--;
-    this._selector.update(pos => this._correctRowCol(this._currentMoveGrid()!, pos!));
-    moves += this._currentMoveGrid()![this._selector()!.row].length - this._selector()!.col;
-    this._selector()!.offset -= moves;
-    console.log(`Row: ${this._selector()!.row}, Col: ${this._selector()!.col}, Offset: ${this._selector()!.offset}, Target: ${String(this.currentlyTargeted())}`);
+    const { row, col } = this._selector()!;
+    if (row <= 0) return;
+    if (!this._layerHasRow(this._layerAt(row, col), row - 1)) return;
+    this._moveTo(row - 1, col);
   }
   moveLeft() {
     if (!this._currentMoveGrid() || !this._selector()) return;
-    if (this._selector()!.col <= 0) return;
-    this._selector()!.col--;
-    this._selector()!.offset--;
-    console.log(`row: ${this._selector()!.row}, col: ${this._selector()!.col}, offset: ${this._selector()!.offset}`);
+    const { row, col } = this._selector()!;
+    if (this._layerAt(row, col) === "Sub" && col === (this._baseGrid![row]?.length ?? 0)) {
+      if (this._subAnchor) this.jumpToID(this._subAnchor);
+      return;
+    }
+    if (col <= 0) return;
+    this._moveTo(row, col - 1);
   }
   moveRight() {
     if (!this._currentMoveGrid() || !this._selector()) return;
-    const row = this._selector()!.row;
-    if (this._currentMoveGrid()![row].length - 1 <= this._selector()!.col) return;
-    this._selector()!.col++;
-    this._selector()!.offset++;
-    console.log(`row: ${this._selector()!.row}, col: ${this._selector()!.col}, offset: ${this._selector()!.offset}`);
+    const { row, col } = this._selector()!;
+    if (this._layerAt(row, col) === "Base") {
+      const entry = this._subGrid?.[0]?.[0];
+      if (entry) this.jumpToID(entry);
+      return;
+    }
+    if (this._currentMoveGrid()![row].length - 1 <= col) return;
+    this._moveTo(row, col + 1);
   }
 
   jumpToID(id: SelectableLocation){
@@ -285,16 +327,25 @@ export class LayoutService {
           default: this.checkDropDownOption();
         }
         break;
-      case "Profile":
-        switch (this.currentlyTargeted()){
-          case "ProfileAvatar":     this.openModal("AvatarMenu"); break;
-          case "ProfileBtnSave":    this.triggerButton("ProfileBtnSave"); break;
-          case "ProfileDDThemes":   this.triggerDropDown("ProfileDDThemes"); break;
+      case "Settings":
+        this._discardArmed = false;
+        switch (this.currentlyTargeted()) {
+          // Sections switch on hover; Enter steps into the section.
+          case "SettingsSecScramble":
+          case "SettingsSecAppearance":
+          case "SettingsSecNcbi":        this.moveRight(); break;
+          // === BUTTONS ===
+          case "SettingsBtnSave":        this.triggerButton("SettingsBtnSave"); break;
+          case "SettingsBtnSetKey":      this.triggerButton("SettingsBtnSetKey"); break;
+          case "SettingsBtnClearKey":    this.triggerButton("SettingsBtnClearKey"); break;
+          // === DROPDOWNS ===
+          case "SettingsDDThemes":       this.triggerDropDown("SettingsDDThemes"); break;
+          // === INPUT ===
+          case "SettingsInputWorkDir":   this.toggleInput("SettingsInputWorkDir"); break;
+          case "SettingsInputApiKey":    this.toggleInput("SettingsInputApiKey"); break;
           default: this.checkDropDownOption();
         }
         break;
-      case "AvatarMenu":
-        this.changeAvatar(this.currentlyTargeted()!); this.closeModal(); break;
     }
   }
 
@@ -319,14 +370,6 @@ export class LayoutService {
     setTimeout(() => this.updateDD.set(null), 200);
   }
 
-  changeAvatar(newAvatar: Avatar) {
-    this.user.updateUserInfo({avatar: newAvatar});
-  }
-  updateTheme() {
-    const newTheme = this.currentTheme();
-    this.user.updateUserInfo({theme: newTheme});
-  }
-
   notify(notification: NotificationObject){
     console.log(`Triggering notification => kind: ${notification.kind} | message: ${notification.message}`);
     this._notificationQueue.update((q) => [...q, notification]);
@@ -346,11 +389,13 @@ export class LayoutService {
       this.closeAllModals();
       return;
     }
+    if (!this._mayLeaveSettings()) return;
     this._modalStack.set([]);
     this.openModal(title);
   }
   /** Opens a modal on top of the current one; closeModal returns to it. */
   openModal(title: ModalTitle) {
+    this._discardArmed = false;
     this.unloadGrid();
     this._modalStack.update(stack => [...stack, title]);
     this._router.navigateByUrl(modals[title].route);
@@ -358,6 +403,7 @@ export class LayoutService {
   }
   /** Closes the top modal and goes back to the one underneath, if any. */
   closeModal(){
+    if (!this._mayLeaveSettings()) return;
     this.unloadGrid();
     this._modalStack.update(stack => stack.slice(0, -1));
     const top = this.activeModal();
@@ -365,6 +411,7 @@ export class LayoutService {
     this.focusOn(top ? "Modal" : "MainPane");
   }
   closeAllModals(){
+    if (!this._mayLeaveSettings()) return;
     this.unloadGrid();
     this._modalStack.set([]);
     this._router.navigateByUrl('/');
@@ -381,7 +428,6 @@ export class LayoutService {
       Selector:          ROW: ${this._selector()?.row} | COL: ${this._selector()?.col} | OFF: ${this._selector()?.offset},\n
       Targeted:          ${this.currentlyTargeted()},
       NotificationQueue: ${this._notificationQueue()},\n
-      Active Avatar:     ${this.activeAvatar()},\n
       MoveGrid:          \n${this.mvGrid_toString(this._currentMoveGrid())},\n
       InjTracker:        valid:      ${this._gridTracker.validInjection};
                          injections: ${this._gridTracker.injections};

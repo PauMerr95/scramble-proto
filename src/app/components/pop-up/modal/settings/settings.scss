@@ -1,0 +1,69 @@
+:host {
+    width: 100%;
+}
+.settings-wrapper {
+    display: flex;
+    flex-direction: row;
+    height: 100%;
+    gap: 10px;
+}
+.settings-sections {
+    flex: 0 0 30%;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-right: 10px;
+    border-right: 2px solid var(--color-std-800, #4e6204);
+}
+.settings-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 36px;
+    padding: 0 8px;
+    border: 2px solid transparent;
+    border-radius: 0.6em;
+    background-color: var(--color-std-950, #1b2201);
+    color: var(--color-std-50);
+    font-family: 'Fira Sans';
+    font-size: 14px;
+    text-align: left;
+    cursor: pointer;
+}
+.settings-section:hover {
+    background: var(--color-std-600, #9bc408);
+}
+.settings-section.active {
+    background-color: #FAF0E6;
+    color: #1f2937;
+    border-color: var(--color-std-600, #C2F50A);
+}
+.settings-section.targeted {
+    box-shadow: 0  5px 5px 0px var(--color-std-600, #9bc408),
+                0 -5px 5px 0px var(--color-std-600, #9bc408);
+    border-color: var(--color-std-500);
+}
+.section-icon {
+    display: flex;
+    width: 24px;
+    height: 24px;
+    justify-content: center;
+}
+.section-label {
+    flex: 1;
+}
+.dirty-marker {
+    color: var(--color-std-500, #c2f50a);
+}
+.settings-section.active .dirty-marker {
+    color: var(--color-std-800, #4e6204);
+}
+.settings-save {
+    margin-top: auto;
+    align-self: center;
+}
+.settings-detail {
+    flex: 1 1 70%;
+    min-width: 0;
+    overflow-y: auto;
+}

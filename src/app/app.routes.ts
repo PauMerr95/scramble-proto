@@ -1,6 +1,5 @@
 import { Routes } from '@angular/router';
-import { ModalAvatars } from './components/pop-up/modal/modal-avatars/modal-avatars';
-import { ProfileComponent } from './components/pop-up/modal/profile/profile';
+import { Settings } from './components/pop-up/modal/settings/settings';
 import { Files } from './components/pop-up/modal/files/files';
 import { Query } from './components/pop-up/modal/query/query';
 
@@ -9,10 +8,9 @@ export const routes: Routes = [
     {
        path: "modal",
        children: [
-        { path: "profile", component: ProfileComponent },
+        { path: "settings", component: Settings },
         { path: "files",   component: Files },
         { path: "query",   component: Query },
-        { path: "avatars", component: ModalAvatars },
        ]
     },
 ];

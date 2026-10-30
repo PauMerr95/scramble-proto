@@ -183,7 +183,7 @@ export class CmdLineService {
   }
 
   private readonly leaderCmds: Record<string, Command> = {
-    p: () => this.lyt.toggleModal("Profile"),
+    s: () => this.lyt.toggleModal("Settings"),
     f: () => this.lyt.toggleModal("Files"),
     q: () => this.lyt.toggleModal("Query"),
     n: () => this.lyt.dismissNotification(this.lyt.activeNotifications()[0]?.id),
@@ -215,6 +215,10 @@ export class CmdLineService {
     wq: {
       usage: "wq [path]", description: "Write, then close the active file",
       run: async (path) => { if (await this._write(path, false)) await this._close(false); },
+    },
+    set: {
+      usage: "set", description: "Open settings",
+      run: () => { if (this.lyt.modalRoot() !== "Settings") this.lyt.toggleModal("Settings"); },
     },
     getJoke: {
       usage: "getJoke", description: "Tell a joke",

@@ -168,6 +168,9 @@ describe('CmdLineService', () => {
     service.pressLeader('q');
     expect(toggle).toHaveBeenCalledWith('Query');
     expect(service.mode()).toBe(null);
+    service.open('Leader');
+    service.pressLeader('s');
+    expect(toggle).toHaveBeenCalledWith('Settings');
 
     service.open('Leader');
     service.pressLeader('z');

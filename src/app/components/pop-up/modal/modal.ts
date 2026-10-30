@@ -3,7 +3,7 @@ import { RouterOutlet } from "@angular/router";
 import { LayoutService } from '../../../services/layout-service';
 import { modals } from '../../../types/layout_types';
 
-/** Hosts the navbar panels (Profile, Files, Query) and their sub-modals. Keys are routed by MotionService. */
+/** Hosts the navbar panels (Settings, Files, Query) and their sub-modals. Keys are routed by MotionService. */
 @Component({
   selector: 'app-modal',
   imports: [RouterOutlet],

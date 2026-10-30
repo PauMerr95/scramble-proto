@@ -12,8 +12,8 @@ Much of the UI will change. These parts stay:
 ## State and services
 
 - Root services own state, and components read signals. Expose state read-only (`asReadonly()`/`computed`) and mutate through methods (`DataSessionService.records` / `patchRecord`).
-- Backend-backed init goes into `provideAppInitializer` in `app.config.ts` (currently `UserDataService.init` + `DataSessionService.init`).
-- All Tauri calls go through a wrapper service (`SequenceStoreService`, `UserDataService`). Specs swap it for a fake (`services/fake-sequence-store.mock.ts`) through `{ provide: SequenceStoreService, useValue: fake }`.
+- Backend-backed init goes into `provideAppInitializer` in `app.config.ts` (currently `SettingsService.init` + `DataSessionService.init`).
+- All Tauri calls go through a wrapper service (`SequenceStoreService`, `SettingsService`). Specs swap it for a fake (`services/fake-sequence-store.mock.ts`) through `{ provide: SequenceStoreService, useValue: fake }`, or pin the `invoke` calls with `mockIPC` from `@tauri-apps/api/mocks`.
 
 ## Windowed sequence viewer
 
@@ -34,8 +34,10 @@ Much of the UI will change. These parts stay:
 - Main pane is a modal editor. `Normal`: h/j/k/l, w/b, 0/^/$, g/G, i/a/r/v/x, n/N for search hits. Plus `Insert`, `Replace`, and `Visual`. `Esc` returns to Normal. Insert/replace accept `IUPAC_CODES` only (it mirrors the backend set).
 - `:` and `/` open the centred `app-cmd-modal` (`components/pop-up/cmd-modal`). Space starts the leader with no overlay, because it is a shortcut prefix. `CmdLineService.open()` remembers the previous focus and switches it to `CmdModal`. `close()` restores it. In that focus, `MotionService` only intercepts Esc/Enter/↑↓/Tab (leader: single keys) and must let every other key reach the `<input>`: a blanket `preventDefault` there is what broke the old command line. Results go to `LayoutService.notify`, not to the UI. Ex-commands are `{usage, description, run}` entries, and the hint list is built from those same entries.
 - `/` search (backend, ≤ `SEARCH_LIMIT` hits, jumps to the first hit at/after the cursor), `:` ex-commands (`executeCmds: Record<string, ExCommand>`, args after the first word, e.g. `:e path`, `:w [path]`, `:w!`, `:q`, `:q!`, `:wq`; names include the `!`), and space leader (5 s timeout, `leaderCmds`).
-- There is no side pane. The navbar panels (Profile, Files, Query) open in the one centred `app-modal` (`components/pop-up/modal`), which renders the top of a modal stack in `LayoutService` through a `modal/<name>` child route (`modals` in `types/layout_types.ts` ↔ `app.routes.ts`). `toggleModal(panel)` (navbar, leader `p`/`f`/`q`) replaces the stack or closes it; `openModal` pushes a sub-modal (e.g. the avatar picker over Profile); `closeModal` pops back. In `Modal` focus, Esc goes through `MotionService` → `handleEsc`: an open drop down closes first, otherwise the top modal pops.
+- There is no side pane. The navbar panels (Settings, Files, Query) open in the one centred `app-modal` (`components/pop-up/modal`), which renders the top of a modal stack in `LayoutService` through a `modal/<name>` child route (`modals` in `types/layout_types.ts` ↔ `app.routes.ts`). `toggleModal(panel)` (navbar, leader `s`/`f`/`q`) replaces the stack or closes it; `openModal` pushes a sub-modal; `closeModal` pops back. In `Modal` focus, Esc goes through `MotionService` → `handleEsc`: an open drop down closes first, otherwise the top modal pops. Leaving Settings with unsaved changes (Esc, backdrop, navbar) only warns the first time; the second try discards the draft.
 - Modals navigate with 2D move grids (`move-grids/mv-grids-modals.ts`) of `SelectableLocation` ids, loaded by a panel's effect while it is the `activeModal()`. Opening/closing a modal unloads the grid. A new focusable widget needs an id in those unions and a slot in the grid.
+- `loadGrid` and the move methods replace the selector with a new object on every change and run `untracked`, so an effect may react to `currentlyTargeted()` and still call `loadGrid` without looping.
+- Layered grid (Settings): `loadLayeredGrid(base, sub, anchor)` keeps a fixed base (section list + Save) and a sub-grid merged to its right by row index; `setSubGrid` swaps it with a rebuild, no splicing. Movement: j/k stay inside their layer, l from the base enters the sub-grid at its top, h from its first column returns to `anchor`. While a drop down is open, plain movement applies (its injected rows shift the indices).
 
 ## Testing
 

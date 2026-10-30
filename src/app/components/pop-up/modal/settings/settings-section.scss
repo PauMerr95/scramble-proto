@@ -1,0 +1,66 @@
+// Shared by the settings section panes.
+:host {
+    display: block;
+    width: 100%;
+}
+.section-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    padding-right: 5px;
+}
+.section-title {
+    font-size: large;
+    font-weight: bold;
+    border-bottom: 2px solid var(--color-std-400, #cef73b);
+}
+.section-hint {
+    font-size: 11px;
+    color: var(--color-std-300, #dbf96c);
+}
+.info-segment-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 3fr;
+    gap: 4px;
+    padding: 2px 4px;
+    font-size: 11px;
+    background-color: var(--color-std-700, #749306);
+    border-top: 1px dashed var(--color-std-400, #cef73b);
+    border-bottom: 1px dashed var(--color-std-400, #cef73b);
+    border-radius: 5px;
+}
+.info-segment-label {
+    display: flex;
+    justify-content: flex-end;
+    padding-right: 1em;
+}
+.info-segment-value {
+    overflow-wrap: anywhere;
+    word-break: break-all;
+}
+.targeted {
+    box-shadow: 0  3px 10px 0 var(--color-std-600, #9bc408),
+                0 -3px 10px 0 var(--color-std-600, #9bc408);
+}
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.field-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.field-row app-input-text {
+    flex: 1;
+}
+.btn-wrapper {
+    display: flex;
+    width: auto;
+    gap: 1em;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: nowrap;
+}

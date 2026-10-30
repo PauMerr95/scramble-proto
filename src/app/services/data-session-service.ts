@@ -1,6 +1,5 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { RecordMeta } from '../types/main_types';
-import { UserDataService } from './user-data';
 import { NCBIDataService } from './ncbi-data-service';
 import { SequenceStoreService } from './sequence-store-service';
 import { QueryPacket } from '../types/side_types';
@@ -9,13 +8,8 @@ import { QueryPacket } from '../types/side_types';
   providedIn: 'root',
 })
 export class DataSessionService {
-  readonly userData = inject(UserDataService);
   readonly ncbi     = inject(NCBIDataService);
   readonly store    = inject(SequenceStoreService);
-
-  readonly userName          = computed<string>(()  => this.userData._USER_NAME());
-  readonly isApiKeyAvailable = computed<boolean>(() => !!this.userData._API_KEY());
-  readonly config_path       = computed<string>(()  => this.userData._SCRAMBLE_CONFIG());
 
   // Metadata of every stored record. Sequences stay on disk and are streamed in windows.
   private readonly _records = signal<RecordMeta[]>([]);

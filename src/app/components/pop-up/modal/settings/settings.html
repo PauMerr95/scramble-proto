@@ -1,0 +1,45 @@
+<div class="settings-wrapper">
+    <nav class="settings-sections">
+        @for (section of sections; track section) {
+            <button class="settings-section"
+            [class.active]="activeSection() === section"
+            [class.targeted]="lyt.currentlyTargeted() === sectionIds[section]"
+            (click)="selectSection(section)">
+                @switch (section) {
+                    @case ("Scramble") {
+                        <app-icon-scramble-settings class="section-icon"
+                        [svg_color]="activeSection() === section ? '#1f2937' : '#FAF0E6'">
+                        </app-icon-scramble-settings>
+                    }
+                    @case ("Appearance") {
+                        <app-icon-appearance-settings class="section-icon"
+                        [svg_color]="activeSection() === section ? '#1f2937' : '#FAF0E6'">
+                        </app-icon-appearance-settings>
+                    }
+                    @case ("NCBI") {
+                        <app-icon-ncbi-settings class="section-icon"
+                        [svg_color]="activeSection() === section ? '#1f2937' : '#FAF0E6'">
+                        </app-icon-ncbi-settings>
+                    }
+                }
+                <span class="section-label">{{ section }}</span>
+                @if (settings.dirtySections().has(section)) {
+                    <span class="dirty-marker" title="Unsaved changes">●</span>
+                }
+            </button>
+        }
+        <app-std-btn class="settings-save"
+        [id]="'SettingsBtnSave'"
+        [innerText]="'Save'"
+        (onTrigger)="save()">
+        </app-std-btn>
+    </nav>
+
+    <section class="settings-detail">
+        @switch (activeSection()) {
+            @case ("Scramble")   { <app-settings-scramble></app-settings-scramble> }
+            @case ("Appearance") { <app-settings-appearance></app-settings-appearance> }
+            @case ("NCBI")       { <app-settings-ncbi></app-settings-ncbi> }
+        }
+    </section>
+</div>

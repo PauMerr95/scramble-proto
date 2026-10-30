@@ -2,7 +2,7 @@ import { ApplicationConfig, inject, provideAppInitializer, provideBrowserGlobalE
 import { provideRouter } from '@angular/router';
 
 import { routes } from './app.routes';
-import { UserDataService } from './services/user-data';
+import { SettingsService } from './services/settings-service';
 import { DataSessionService } from './services/data-session-service';
 
 export const appConfig: ApplicationConfig = {
@@ -10,9 +10,9 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
     provideAppInitializer(() => {
-      const userData = inject(UserDataService);
+      const settings = inject(SettingsService);
       const dataSession = inject(DataSessionService);
-      return Promise.all([userData.init(), dataSession.init()]).then(() => undefined);
+      return Promise.all([settings.init(), dataSession.init()]).then(() => undefined);
     })
   ]
 };

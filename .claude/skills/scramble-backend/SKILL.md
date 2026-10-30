@@ -7,15 +7,15 @@ description: Rust/Tauri backend for scramble-proto — Tauri commands and IPC co
 
 ## Layout
 
-- `main.rs`: `#[tokio::main]`, loads `UserInfo` from `<data dir>/.config.toml`, and calls `app_lib::run`.
-- `lib.rs`: `run` (store in `<data dir>/tmp`, flusher thread, flush-all on `RunEvent::Exit`) and `with_commands` (`.manage(UserState)`, `.manage(Arc<SeqStore>)`, every `invoke` handler; generic over the runtime). User commands.
-- `user/data.rs`: `UserInfo`/`Theme`/`Avatar` (mirror the TS types) and `default_data_dir` (proto-specific dirs).
+- `main.rs`: `#[tokio::main]`, loads `Settings` from `<data dir>/.config.toml`, and calls `app_lib::run`.
+- `lib.rs`: `run` (store in `<data dir>/tmp`, flusher thread, flush-all on `RunEvent::Exit`) and `with_commands` (`.manage(SettingsState)`, `.manage(Arc<SeqStore>)`, every `invoke` handler; generic over the runtime). Settings commands (`get_settings`, `save_settings`, `set_api_key`, `clear_api_key`).
+- `user/data.rs`: `Settings` (persisted, holds the API key, never sent over IPC), its IPC views `SettingsInfo`/`ApiKeyStatus`/`SettingsDraft` and `Theme` (mirror the TS types), and `default_data_dir` (proto-specific dirs).
 - `seq.rs`: IUPAC set and validation. `seq/fasta.rs`: canonical files, `RecordMeta`, streaming import. `seq/view.rs`: `RecordView` piece table, `EditOp`, window/search, snapshot/commit. `seq/workspace.rs`: `OpenFile` manifests, `FileStamp`, FASTA export. `seq/store.rs`: `SeqStore` (open/save/close of files, startup sweep), `FlushPolicy`, `spawn_flusher`. `seq/commands.rs`: the `invoke` surface.
 - `tests/ipc.rs`: end-to-end tests that call the real commands through IPC on `tauri::test`'s mock runtime, with the frontend's camelCase payloads. `build.rs` embeds `windows-test-manifest.xml` into test binaries; without it they die with `STATUS_ENTRYPOINT_NOT_FOUND` on Windows. Unit-test binaries can't get it, so anything that builds a tauri `App` goes in `tests/`.
 
 ## IPC rules
 
-- Structs crossing IPC: `#[serde(rename_all = "camelCase")]`, with a comment naming the TS mirror, and a Rust test that pins the JSON (see `ipc_json_matches_frontend_user_info`, `edit_op_json_matches_frontend`). `Option<T>` ↔ `T | null`.
+- Structs crossing IPC: `#[serde(rename_all = "camelCase")]`, with a comment naming the TS mirror, and a Rust test that pins the JSON (see `ipc_json_matches_frontend_settings_info`, `edit_op_json_matches_frontend`). `Option<T>` ↔ `T | null`.
 - Disk/CPU work: `async` command + `spawn_blocking` (the `blocking()` helper in `seq/commands.rs`). Commands that borrow `State` must return `Result`.
 - Never return a whole sequence. Windows (`get_window`) and hit offsets (`search_sequence`, capped by `limit`) only.
 - Errors: `io::Result` inside `seq`, mapped to `String` at the command boundary. Use `invalid_input(..)` for caller mistakes.

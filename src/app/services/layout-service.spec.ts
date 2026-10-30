@@ -3,17 +3,20 @@ import { LayoutService } from './layout-service';
 import { Router } from '@angular/router';
 import { MoveGrid } from '../types/side_types';
 import { focusLocations, queryPages, GridInjection, GridInjector } from '../types/layout_types';
-import { UserDataService } from './user-data';
-import { defaultUserInfo } from '../types/data_types';
+import { SettingsService } from './settings-service';
 import { selectableLocations } from '../types/side_types';
+import { signal, WritableSignal } from '@angular/core';
+import { settingsBaseGrid, settingsSectionIds, settingsSubGrids } from '../move-grids/mv-grids-modals';
 
 describe('LayoutService', () => {
   let service: LayoutService;
+  let mockedSettings: { dirty: WritableSignal<boolean>, revert: ReturnType<typeof vi.fn> };
   beforeEach(() => {
+    mockedSettings = { dirty: signal(false), revert: vi.fn() };
     TestBed.configureTestingModule({
       providers: [
         LayoutService,
-        { provide: UserDataService, useValue: mockedUserDataService},
+        { provide: SettingsService, useValue: mockedSettings },
         { provide: Router,          useValue: mockedRouter},
       ],
     });
@@ -33,15 +36,6 @@ describe('LayoutService', () => {
       service.focusOn(foc);
       expect(service.currentFocus()).toMatch(foc);
     }
-  });
-
-  it('should retrieve and update user information', () => {
-    service.activeAvatar();
-    expect(mockedUserDataService.data).toHaveBeenCalledOnce();
-
-    service.changeAvatar("Sheep");
-    service.updateTheme();
-    expect(mockedUserDataService.updateUserInfo).toHaveBeenCalledTimes(2);
   });
 
   it('should return currentTargeted when grid is loaded', () => {
@@ -178,25 +172,156 @@ describe('LayoutService', () => {
     }
   });
 
-  test.todo('should relay Enter events correctly for Profile Page');
+  it('should relay Enter events correctly for Settings', () => {
+    service.toggleModal("Settings");
+    const spyTarget = vi.spyOn(service, 'currentlyTargeted');
+    const spyTriggerBtn = vi.spyOn(service, 'triggerButton');
+    for (const btn of ["SettingsBtnSave", "SettingsBtnSetKey", "SettingsBtnClearKey"]) {
+      spyTarget.mockReturnValue(btn);
+      service.handleEnter();
+      expect(spyTriggerBtn).toHaveBeenCalledWith(btn);
+    }
+    const spyTriggerDD = vi.spyOn(service, 'triggerDropDown');
+    spyTarget.mockReturnValue("SettingsDDThemes");
+    service.handleEnter();
+    expect(spyTriggerDD).toHaveBeenCalledWith("SettingsDDThemes");
+    // Stubbed: the real one moves focus into the input, after which Enter is ignored.
+    const spyToggleInput = vi.spyOn(service, 'toggleInput').mockImplementation(() => {});
+    for (const input of ["SettingsInputWorkDir", "SettingsInputApiKey"]) {
+      spyTarget.mockReturnValue(input);
+      service.handleEnter();
+      expect(spyToggleInput).toHaveBeenCalledWith(input);
+    }
+    const spyMoveRight = vi.spyOn(service, 'moveRight');
+    spyTarget.mockReturnValue("SettingsSecNcbi");
+    service.handleEnter();
+    expect(spyMoveRight).toHaveBeenCalled();
+  });
+
+  it('should merge a layered grid and swap its sub-grid', () => {
+    service.loadLayeredGrid(settingsBaseGrid, settingsSubGrids.NCBI, settingsSectionIds.NCBI);
+    expect(service.currentMoveGrid).toStrictEqual([
+      ["SettingsSecScramble", "SettingsKeyStatus"],
+      ["SettingsSecAppearance", "SettingsInputApiKey", "SettingsBtnSetKey", "SettingsBtnClearKey"],
+      ["SettingsSecNcbi"],
+      ["SettingsBtnSave"],
+    ]);
+    service.jumpToID("SettingsSecNcbi");
+    service.setSubGrid(settingsSubGrids.Appearance, settingsSectionIds.Appearance);
+    expect(service.currentMoveGrid![0]).toStrictEqual(["SettingsSecScramble", "SettingsDDThemes"]);
+    // The selector survives the swap.
+    expect(service.currentlyTargeted()).toBe("SettingsSecNcbi");
+    expect(service.selector!.offset).toBe(3);
+
+    service.setSubGrid(null);
+    expect(service.currentMoveGrid).toStrictEqual(settingsBaseGrid);
+    // The constant grids are never mutated.
+    expect(settingsBaseGrid[0]).toStrictEqual(["SettingsSecScramble"]);
+  });
+
+  it('should append sub rows past the base and ignore setSubGrid without a base', () => {
+    service.setSubGrid([["A"]]);
+    expect(service.currentMoveGrid).toBe(null);
+    service.loadLayeredGrid([["Base0"]], [["Sub0"], ["Sub1", "Sub1b"]]);
+    expect(service.currentMoveGrid).toStrictEqual([["Base0", "Sub0"], ["Sub1", "Sub1b"]]);
+  });
+
+  it('should keep j/k inside a layer and cross layers only through h/l', () => {
+    service.loadLayeredGrid(settingsBaseGrid, settingsSubGrids.Appearance, settingsSectionIds.Appearance);
+    service.jumpToID("SettingsSecAppearance");
+    // l enters the sub-grid at its top, even from a row the sub-grid does not reach.
+    service.moveRight();
+    expect(service.currentlyTargeted()).toBe("SettingsDDThemes");
+    // The sub-grid has a single row, so j stays put instead of landing on another section.
+    service.moveDown();
+    expect(service.currentlyTargeted()).toBe("SettingsDDThemes");
+    // h returns to the section the sub-grid belongs to, not to the base cell in its row.
+    service.moveLeft();
+    expect(service.currentlyTargeted()).toBe("SettingsSecAppearance");
+    service.moveDown();
+    service.moveDown();
+    expect(service.currentlyTargeted()).toBe("SettingsBtnSave");
+
+    service.setSubGrid(settingsSubGrids.NCBI, settingsSectionIds.NCBI);
+    service.jumpToID("SettingsKeyStatus");
+    service.moveDown();
+    expect(service.currentlyTargeted()).toBe("SettingsInputApiKey");
+    service.moveRight();
+    expect(service.currentlyTargeted()).toBe("SettingsBtnSetKey");
+    service.moveDown();
+    expect(service.currentlyTargeted()).toBe("SettingsBtnSetKey");
+    service.moveUp();
+    expect(service.currentlyTargeted()).toBe("SettingsKeyStatus");
+  });
+
+  it('should use plain movement while a drop down is open in a layered grid', () => {
+    service.loadLayeredGrid(settingsBaseGrid, settingsSubGrids.Appearance, settingsSectionIds.Appearance);
+    service.jumpToID("SettingsDDThemes");
+    service.injectIntoGrid({
+      insertLoc: structuredClone(service.selector!),
+      origin: "SettingsDDThemes",
+      axis: "row",
+      data: ["0_SettingsDDThemes_DarkLime", "1_SettingsDDThemes_Ocean"],
+    });
+    service.moveDown();
+    expect(service.currentlyTargeted()).toBe("0_SettingsDDThemes_DarkLime");
+    service.ejectFromGrid("SettingsDDThemes");
+    expect(service.currentMoveGrid![1]).toStrictEqual(["SettingsSecAppearance"]);
+  });
+
+  it('should clamp the selector into a smaller grid', () => {
+    service.loadGrid(testGrid);
+    service.jumpToOffset(9);   // Row1Col4
+    service.loadGrid([["A", "B"], ["C"]]);
+    expect(service.selector).toStrictEqual({ row: 1, col: 0, offset: 2 });
+    expect(service.currentlyTargeted()).toBe("C");
+    service.loadGrid([["A"]]);
+    expect(service.selector).toStrictEqual({ row: 0, col: 0, offset: 0 });
+  });
+
+  it('should ask twice before leaving Settings with unsaved changes', () => {
+    service.toggleModal("Settings");
+    mockedSettings.dirty.set(true);
+    service.handleEsc();
+    expect(service.activeModal()).toBe("Settings");
+    expect(service.activeNotifications().at(-1)?.kind).toBe("Warn");
+    expect(mockedSettings.revert).not.toHaveBeenCalled();
+
+    service.handleEsc();
+    expect(mockedSettings.revert).toHaveBeenCalledOnce();
+    expect(service.activeModal()).toBe(null);
+
+    // Switching panels is guarded too, and Enter in between disarms the discard.
+    service.toggleModal("Settings");
+    service.toggleModal("Query");
+    expect(service.activeModal()).toBe("Settings");
+    service.handleEnter();
+    service.toggleModal("Query");
+    expect(service.activeModal()).toBe("Settings");
+
+    mockedSettings.dirty.set(false);
+    service.toggleModal("Query");
+    expect(service.activeModal()).toBe("Query");
+  });
+
   test.todo('should support Notification Events');
   it('should toggle navbar modals and stack sub-modals', () => {
-    service.toggleModal("Profile");
-    expect(service.activeModal()).toBe("Profile");
+    service.toggleModal("Settings");
+    expect(service.activeModal()).toBe("Settings");
     expect(service.currentFocus()).toBe("Modal");
-    expect(mockedRouter.navigateByUrl).toHaveBeenLastCalledWith("modal/profile");
+    expect(mockedRouter.navigateByUrl).toHaveBeenLastCalledWith("modal/settings");
 
-    // A sub-modal goes on top and closing it returns to the panel underneath.
-    service.openModal("AvatarMenu");
-    expect(service.activeModal()).toBe("AvatarMenu");
-    expect(service.modalRoot()).toBe("Profile");
+    // A modal opened on top and closed again returns to the panel underneath.
+    service.openModal("Files");
+    expect(service.activeModal()).toBe("Files");
+    expect(service.modalRoot()).toBe("Settings");
     service.closeModal();
-    expect(service.activeModal()).toBe("Profile");
+    expect(service.activeModal()).toBe("Settings");
     expect(service.currentFocus()).toBe("Modal");
-    expect(mockedRouter.navigateByUrl).toHaveBeenLastCalledWith("modal/profile");
+    expect(mockedRouter.navigateByUrl).toHaveBeenLastCalledWith("modal/settings");
 
     // Another navbar panel replaces the whole stack.
-    service.openModal("AvatarMenu");
+    service.openModal("Files");
     service.toggleModal("Query");
     expect(service.activeModal()).toBe("Query");
     expect(service.modalRoot()).toBe("Query");
@@ -209,20 +334,20 @@ describe('LayoutService', () => {
   });
 
   it('should close an open drop down on Esc before closing the modal', () => {
-    service.toggleModal("Profile");
-    service.loadGrid([["ProfileDDThemes"], ["ProfileBtnSave"]]);
+    service.toggleModal("Settings");
+    service.loadGrid([["SettingsDDThemes"], ["SettingsBtnSave"]]);
     service.injectIntoGrid({
       insertLoc: {row: 0, col: 0, offset: 0},
-      origin: "ProfileDDThemes",
+      origin: "SettingsDDThemes",
       axis: "row",
-      data: ["0_ProfileDDThemes_DarkLime"],
+      data: ["0_SettingsDDThemes_DarkLime"],
     });
     const spyTriggerDD = vi.spyOn(service, 'triggerDropDown');
     service.handleEsc();
-    expect(spyTriggerDD).toHaveBeenCalledWith("ProfileDDThemes");
-    expect(service.activeModal()).toBe("Profile");
+    expect(spyTriggerDD).toHaveBeenCalledWith("SettingsDDThemes");
+    expect(service.activeModal()).toBe("Settings");
 
-    service.ejectFromGrid("ProfileDDThemes");  // what the drop down does when it closes
+    service.ejectFromGrid("SettingsDDThemes");  // what the drop down does when it closes
     service.handleEsc();
     expect(service.activeModal()).toBe(null);
   });
@@ -239,11 +364,6 @@ const testGrid: MoveGrid = [
   ["Row4Col0", "Row4Col1", "Row4Col2", "Row4Col3", "Row4Col4"],
   ["Row5Col0"]
 ];
-
-const mockedUserDataService = {
-  data: vi.fn().mockReturnValue(defaultUserInfo()),
-  updateUserInfo: vi.fn(),
-} as unknown as UserDataService;
 
 const mockedRouter = {
   navigateByUrl: vi.fn(),

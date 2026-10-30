@@ -13,11 +13,6 @@ Scramble is prioritising a smooth workflow while still allowing for a high degre
 
 ### Sneakpeak
 
-#### User Pane
-<div style="display:flex; justify-content: center">
-<img src="./public/github/SneakPeak_UserProfile.png" alt="scramble_banner" style="width: 1000px; border-radius: 5px; border: 2px solid black" >
-</div>
-
 #### Query
 <div style="display:flex; justify-content: center">
 <img src="./public/github/SneakPeak_GenomeQuery.png" alt="scramble_banner" style="width: 1000px; border-radius: 5px; border: 2px solid black" >

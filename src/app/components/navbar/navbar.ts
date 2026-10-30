@@ -1,13 +1,13 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { IconFolder } from "../icons/folder";
 import { IconSearchDB } from "../icons/db_search";
-import { IconProfile } from "../icons/profile";
+import { IconSettings } from "../icons/icon-settings";
 import { NavbarLocation, ModalTitle } from '../../types/layout_types';
 import { Color } from "../../types/main_types"
 
 @Component({
   selector: 'app-navbar',
-  imports: [IconFolder, IconSearchDB, IconProfile],
+  imports: [IconFolder, IconSearchDB, IconSettings],
   templateUrl: './navbar.html',
   styleUrl: './navbar.scss',
 })
